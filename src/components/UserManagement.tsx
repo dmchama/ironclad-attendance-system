@@ -20,9 +20,9 @@ const UserManagement = () => {
     name: '',
     email: '',
     phone: '',
-    membershipType: 'basic' as const,
+    membershipType: 'basic' as 'basic' | 'premium' | 'vip',
     emergencyContact: '',
-    status: 'active' as const
+    status: 'active' as 'active' | 'inactive' | 'suspended'
   });
 
   const resetForm = () => {
@@ -175,7 +175,7 @@ const UserManagement = () => {
               </div>
               <div>
                 <Label htmlFor="membership">Membership Type</Label>
-                <Select value={formData.membershipType} onValueChange={(value: any) => setFormData({ ...formData, membershipType: value })}>
+                <Select value={formData.membershipType} onValueChange={(value: 'basic' | 'premium' | 'vip') => setFormData({ ...formData, membershipType: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select membership type" />
                   </SelectTrigger>
@@ -188,7 +188,7 @@ const UserManagement = () => {
               </div>
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
+                <Select value={formData.status} onValueChange={(value: 'active' | 'inactive' | 'suspended') => setFormData({ ...formData, status: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
