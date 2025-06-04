@@ -1,5 +1,6 @@
 
 import { create } from 'zustand';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface User {
   id: string;
@@ -37,143 +38,251 @@ interface GymStore {
   users: User[];
   attendance: AttendanceRecord[];
   payments: Payment[];
-  addUser: (user: Omit<User, 'id'>) => void;
-  updateUser: (id: string, user: Partial<User>) => void;
-  deleteUser: (id: string) => void;
-  addAttendance: (attendance: Omit<AttendanceRecord, 'id'>) => void;
-  updateAttendance: (id: string, attendance: Partial<AttendanceRecord>) => void;
-  addPayment: (payment: Omit<Payment, 'id'>) => void;
-  updatePayment: (id: string, payment: Partial<Payment>) => void;
+  loading: boolean;
+  fetchUsers: () => Promise<void>;
+  fetchAttendance: () => Promise<void>;
+  fetchPayments: () => Promise<void>;
+  addUser: (user: Omit<User, 'id'>) => Promise<void>;
+  updateUser: (id: string, user: Partial<User>) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
+  addAttendance: (attendance: Omit<AttendanceRecord, 'id'>) => Promise<void>;
+  updateAttendance: (id: string, attendance: Partial<AttendanceRecord>) => Promise<void>;
+  addPayment: (payment: Omit<Payment, 'id'>) => Promise<void>;
+  updatePayment: (id: string, payment: Partial<Payment>) => Promise<void>;
 }
 
-// Sample data
-const sampleUsers: User[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1234567890',
-    membershipType: 'premium',
-    joinDate: '2024-01-15',
-    status: 'active',
-    emergencyContact: '+1234567891'
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    phone: '+1234567892',
-    membershipType: 'basic',
-    joinDate: '2024-02-01',
-    status: 'active',
-    emergencyContact: '+1234567893'
-  },
-  {
-    id: '3',
-    name: 'Mike Johnson',
-    email: 'mike@example.com',
-    phone: '+1234567894',
-    membershipType: 'vip',
-    joinDate: '2024-01-10',
-    status: 'active',
-    emergencyContact: '+1234567895'
-  }
-];
+export const useGymStore = create<GymStore>((set, get) => ({
+  users: [],
+  attendance: [],
+  payments: [],
+  loading: false,
 
-const sampleAttendance: AttendanceRecord[] = [
-  {
-    id: '1',
-    userId: '1',
-    userName: 'John Doe',
-    date: new Date().toISOString().split('T')[0],
-    checkIn: '08:00',
-    checkOut: '10:00',
-    duration: 120
-  },
-  {
-    id: '2',
-    userId: '2',
-    userName: 'Jane Smith',
-    date: new Date().toISOString().split('T')[0],
-    checkIn: '18:00',
-    duration: 0
-  }
-];
+  fetchUsers: async () => {
+    set({ loading: true });
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-const samplePayments: Payment[] = [
-  {
-    id: '1',
-    userId: '1',
-    userName: 'John Doe',
-    amount: 79.99,
-    dueDate: '2024-06-01',
-    paidDate: '2024-05-28',
-    status: 'paid',
-    membershipType: 'premium'
-  },
-  {
-    id: '2',
-    userId: '2',
-    userName: 'Jane Smith',
-    amount: 49.99,
-    dueDate: '2024-06-01',
-    status: 'pending',
-    membershipType: 'basic'
-  },
-  {
-    id: '3',
-    userId: '3',
-    userName: 'Mike Johnson',
-    amount: 99.99,
-    dueDate: '2024-06-01',
-    status: 'pending',
-    membershipType: 'vip'
-  }
-];
+      if (error) throw error;
 
-export const useGymStore = create<GymStore>((set) => ({
-  users: sampleUsers,
-  attendance: sampleAttendance,
-  payments: samplePayments,
-  
-  addUser: (user) =>
-    set((state) => ({
-      users: [...state.users, { ...user, id: Date.now().toString() }],
-    })),
-    
-  updateUser: (id, updatedUser) =>
-    set((state) => ({
-      users: state.users.map((user) =>
-        user.id === id ? { ...user, ...updatedUser } : user
-      ),
-    })),
-    
-  deleteUser: (id) =>
-    set((state) => ({
-      users: state.users.filter((user) => user.id !== id),
-    })),
-    
-  addAttendance: (attendance) =>
-    set((state) => ({
-      attendance: [...state.attendance, { ...attendance, id: Date.now().toString() }],
-    })),
-    
-  updateAttendance: (id, updatedAttendance) =>
-    set((state) => ({
-      attendance: state.attendance.map((record) =>
-        record.id === id ? { ...record, ...updatedAttendance } : record
-      ),
-    })),
-    
-  addPayment: (payment) =>
-    set((state) => ({
-      payments: [...state.payments, { ...payment, id: Date.now().toString() }],
-    })),
-    
-  updatePayment: (id, updatedPayment) =>
-    set((state) => ({
-      payments: state.payments.map((payment) =>
-        payment.id === id ? { ...payment, ...updatedPayment } : payment
-      ),
-    })),
+      const users: User[] = data?.map(member => ({
+        id: member.id,
+        name: member.name,
+        email: member.email,
+        phone: member.phone,
+        membershipType: member.membership_type as 'basic' | 'premium' | 'vip',
+        joinDate: member.join_date,
+        status: member.status as 'active' | 'inactive' | 'suspended',
+        emergencyContact: member.emergency_contact || ''
+      })) || [];
+
+      set({ users });
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchAttendance: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select(`
+          *,
+          members (name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const attendance: AttendanceRecord[] = data?.map(record => ({
+        id: record.id,
+        userId: record.member_id,
+        userName: record.members?.name || 'Unknown',
+        date: record.date,
+        checkIn: record.check_in,
+        checkOut: record.check_out || undefined,
+        duration: record.duration || undefined
+      })) || [];
+
+      set({ attendance });
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+    }
+  },
+
+  fetchPayments: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select(`
+          *,
+          members (name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const payments: Payment[] = data?.map(payment => ({
+        id: payment.id,
+        userId: payment.member_id,
+        userName: payment.members?.name || 'Unknown',
+        amount: payment.amount,
+        dueDate: payment.due_date,
+        paidDate: payment.paid_date || undefined,
+        status: payment.status as 'pending' | 'paid' | 'overdue',
+        membershipType: payment.membership_type
+      })) || [];
+
+      set({ payments });
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+    }
+  },
+
+  addUser: async (user) => {
+    try {
+      const { error } = await supabase
+        .from('members')
+        .insert({
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          membership_type: user.membershipType,
+          join_date: user.joinDate,
+          status: user.status,
+          emergency_contact: user.emergencyContact
+        });
+
+      if (error) throw error;
+      
+      await get().fetchUsers();
+    } catch (error) {
+      console.error('Error adding user:', error);
+      throw error;
+    }
+  },
+
+  updateUser: async (id, updatedUser) => {
+    try {
+      const { error } = await supabase
+        .from('members')
+        .update({
+          ...(updatedUser.name && { name: updatedUser.name }),
+          ...(updatedUser.email && { email: updatedUser.email }),
+          ...(updatedUser.phone && { phone: updatedUser.phone }),
+          ...(updatedUser.membershipType && { membership_type: updatedUser.membershipType }),
+          ...(updatedUser.status && { status: updatedUser.status }),
+          ...(updatedUser.emergencyContact !== undefined && { emergency_contact: updatedUser.emergencyContact })
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await get().fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
+  },
+
+  deleteUser: async (id) => {
+    try {
+      const { error } = await supabase
+        .from('members')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await get().fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
+    }
+  },
+
+  addAttendance: async (attendance) => {
+    try {
+      const { error } = await supabase
+        .from('attendance')
+        .insert({
+          member_id: attendance.userId,
+          date: attendance.date,
+          check_in: attendance.checkIn,
+          check_out: attendance.checkOut || null,
+          duration: attendance.duration || null
+        });
+
+      if (error) throw error;
+      
+      await get().fetchAttendance();
+    } catch (error) {
+      console.error('Error adding attendance:', error);
+      throw error;
+    }
+  },
+
+  updateAttendance: async (id, updatedAttendance) => {
+    try {
+      const { error } = await supabase
+        .from('attendance')
+        .update({
+          ...(updatedAttendance.checkOut && { check_out: updatedAttendance.checkOut }),
+          ...(updatedAttendance.duration !== undefined && { duration: updatedAttendance.duration })
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await get().fetchAttendance();
+    } catch (error) {
+      console.error('Error updating attendance:', error);
+      throw error;
+    }
+  },
+
+  addPayment: async (payment) => {
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .insert({
+          member_id: payment.userId,
+          amount: payment.amount,
+          due_date: payment.dueDate,
+          paid_date: payment.paidDate || null,
+          status: payment.status,
+          membership_type: payment.membershipType
+        });
+
+      if (error) throw error;
+      
+      await get().fetchPayments();
+    } catch (error) {
+      console.error('Error adding payment:', error);
+      throw error;
+    }
+  },
+
+  updatePayment: async (id, updatedPayment) => {
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .update({
+          ...(updatedPayment.status && { status: updatedPayment.status }),
+          ...(updatedPayment.paidDate && { paid_date: updatedPayment.paidDate })
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await get().fetchPayments();
+    } catch (error) {
+      console.error('Error updating payment:', error);
+      throw error;
+    }
+  },
 }));

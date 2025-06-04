@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,15 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Mail, Phone, Calendar } from "lucide-react";
+import { Plus, Edit, Trash2, Mail, Phone, Calendar, Loader2 } from "lucide-react";
 import { useGymStore, User } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
 
 const UserManagement = () => {
-  const { users, addUser, updateUser, deleteUser } = useGymStore();
+  const { users, addUser, updateUser, deleteUser, loading } = useGymStore();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -37,7 +37,7 @@ const UserManagement = () => {
     setEditingUser(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.email || !formData.phone) {
@@ -49,25 +49,37 @@ const UserManagement = () => {
       return;
     }
 
-    if (editingUser) {
-      updateUser(editingUser.id, formData);
-      toast({
-        title: "Success",
-        description: "Member updated successfully"
-      });
-    } else {
-      addUser({
-        ...formData,
-        joinDate: new Date().toISOString().split('T')[0]
-      });
-      toast({
-        title: "Success",
-        description: "New member added successfully"
-      });
-    }
+    setSubmitting(true);
 
-    resetForm();
-    setIsDialogOpen(false);
+    try {
+      if (editingUser) {
+        await updateUser(editingUser.id, formData);
+        toast({
+          title: "Success",
+          description: "Member updated successfully"
+        });
+      } else {
+        await addUser({
+          ...formData,
+          joinDate: new Date().toISOString().split('T')[0]
+        });
+        toast({
+          title: "Success",
+          description: "New member added successfully"
+        });
+      }
+
+      resetForm();
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save member. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEdit = (user: User) => {
@@ -83,13 +95,21 @@ const UserManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this member?')) {
-      deleteUser(id);
-      toast({
-        title: "Success",
-        description: "Member deleted successfully"
-      });
+      try {
+        await deleteUser(id);
+        toast({
+          title: "Success",
+          description: "Member deleted successfully"
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete member. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -110,6 +130,15 @@ const UserManagement = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading members...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -200,7 +229,8 @@ const UserManagement = () => {
                 </Select>
               </div>
               <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
+                <Button type="submit" className="flex-1" disabled={submitting}>
+                  {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   {editingUser ? 'Update' : 'Add'} Member
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

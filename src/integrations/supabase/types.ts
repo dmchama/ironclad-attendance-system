@@ -9,7 +9,127 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      attendance: {
+        Row: {
+          check_in: string
+          check_out: string | null
+          created_at: string
+          date: string
+          duration: number | null
+          id: string
+          member_id: string
+        }
+        Insert: {
+          check_in: string
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          duration?: number | null
+          id?: string
+          member_id: string
+        }
+        Update: {
+          check_in?: string
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          duration?: number | null
+          id?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members: {
+        Row: {
+          created_at: string
+          email: string
+          emergency_contact: string | null
+          id: string
+          join_date: string
+          membership_type: string
+          name: string
+          phone: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          emergency_contact?: string | null
+          id?: string
+          join_date?: string
+          membership_type: string
+          name: string
+          phone: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          emergency_contact?: string | null
+          id?: string
+          join_date?: string
+          membership_type?: string
+          name?: string
+          phone?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          member_id: string
+          membership_type: string
+          paid_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          member_id: string
+          membership_type: string
+          paid_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          member_id?: string
+          membership_type?: string
+          paid_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
