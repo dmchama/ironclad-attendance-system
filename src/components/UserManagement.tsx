@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Mail, Phone, Calendar, Loader2, QrCode } from "lucide-react";
+import { Plus, Edit, Trash2, Mail, Phone, Calendar, Loader2, QrCode, Share } from "lucide-react";
 import { useGymStore, User } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
+import BarcodeShareDialog from "./BarcodeShareDialog";
 
 const UserManagement = () => {
   const { users, addUser, updateUser, deleteUser, generateBarcode, loading } = useGymStore();
@@ -18,6 +18,8 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [generatingBarcode, setGeneratingBarcode] = useState<string | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -58,6 +60,11 @@ const UserManagement = () => {
     }
   };
 
+  const handleShareBarcode = (user: User) => {
+    setSelectedUser(user);
+    setShareDialogOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -80,7 +87,7 @@ const UserManagement = () => {
           description: "Member updated successfully"
         });
       } else {
-        // Generate barcode for new user
+        // Generate unique barcode for new user
         const timestamp = Date.now();
         const random = Math.floor(Math.random() * 1000);
         const barcode = `GYM${timestamp}${random}`;
@@ -92,7 +99,7 @@ const UserManagement = () => {
         });
         toast({
           title: "Success",
-          description: "New member added successfully with barcode"
+          description: "New member added successfully with unique barcode"
         });
       }
 
@@ -315,16 +322,27 @@ const UserManagement = () => {
                 Joined: {new Date(user.joinDate).toLocaleDateString()}
               </div>
               
-              {/* Barcode Section */}
+              {/* Enhanced Barcode Section */}
               <div className="pt-3 border-t">
                 {user.barcode ? (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <QrCode className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
-                        {user.barcode}
-                      </span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <QrCode className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+                          {user.barcode}
+                        </span>
+                      </div>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleShareBarcode(user)}
+                      className="w-full"
+                    >
+                      <Share className="h-3 w-3 mr-2" />
+                      Share Barcode
+                    </Button>
                   </div>
                 ) : (
                   <Button
@@ -363,6 +381,17 @@ const UserManagement = () => {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Barcode Share Dialog */}
+      {selectedUser && (
+        <BarcodeShareDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          barcode={selectedUser.barcode || ''}
+          memberName={selectedUser.name}
+          memberEmail={selectedUser.email}
+        />
       )}
     </div>
   );
