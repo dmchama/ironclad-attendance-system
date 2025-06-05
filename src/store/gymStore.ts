@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -11,6 +10,7 @@ export interface User {
   joinDate: string;
   status: 'active' | 'inactive' | 'suspended';
   emergencyContact: string;
+  barcode?: string;
 }
 
 export interface AttendanceRecord {
@@ -49,6 +49,7 @@ interface GymStore {
   updateAttendance: (id: string, attendance: Partial<AttendanceRecord>) => Promise<void>;
   addPayment: (payment: Omit<Payment, 'id'>) => Promise<void>;
   updatePayment: (id: string, payment: Partial<Payment>) => Promise<void>;
+  generateBarcode: (userId: string) => Promise<string>;
 }
 
 export const useGymStore = create<GymStore>((set, get) => ({
@@ -75,7 +76,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
         membershipType: member.membership_type as 'basic' | 'premium' | 'vip',
         joinDate: member.join_date,
         status: member.status as 'active' | 'inactive' | 'suspended',
-        emergencyContact: member.emergency_contact || ''
+        emergencyContact: member.emergency_contact || '',
+        barcode: member.barcode || undefined
       })) || [];
 
       set({ users });
@@ -154,7 +156,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
           membership_type: user.membershipType,
           join_date: user.joinDate,
           status: user.status,
-          emergency_contact: user.emergencyContact
+          emergency_contact: user.emergencyContact,
+          barcode: user.barcode
         });
 
       if (error) throw error;
@@ -176,7 +179,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
           ...(updatedUser.phone && { phone: updatedUser.phone }),
           ...(updatedUser.membershipType && { membership_type: updatedUser.membershipType }),
           ...(updatedUser.status && { status: updatedUser.status }),
-          ...(updatedUser.emergencyContact !== undefined && { emergency_contact: updatedUser.emergencyContact })
+          ...(updatedUser.emergencyContact !== undefined && { emergency_contact: updatedUser.emergencyContact }),
+          ...(updatedUser.barcode !== undefined && { barcode: updatedUser.barcode })
         })
         .eq('id', id);
 
@@ -282,6 +286,29 @@ export const useGymStore = create<GymStore>((set, get) => ({
       await get().fetchPayments();
     } catch (error) {
       console.error('Error updating payment:', error);
+      throw error;
+    }
+  },
+
+  generateBarcode: async (userId: string) => {
+    try {
+      // Generate a unique barcode using timestamp and random number
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 1000);
+      const barcode = `GYM${timestamp}${random}`;
+      
+      // Update the user with the new barcode
+      const { error } = await supabase
+        .from('members')
+        .update({ barcode })
+        .eq('id', userId);
+
+      if (error) throw error;
+      
+      await get().fetchUsers();
+      return barcode;
+    } catch (error) {
+      console.error('Error generating barcode:', error);
       throw error;
     }
   },

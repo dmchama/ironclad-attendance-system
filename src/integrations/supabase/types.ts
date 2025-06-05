@@ -49,6 +49,7 @@ export type Database = {
       }
       members: {
         Row: {
+          barcode: string | null
           created_at: string
           email: string
           emergency_contact: string | null
@@ -61,6 +62,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          barcode?: string | null
           created_at?: string
           email: string
           emergency_contact?: string | null
@@ -73,6 +75,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          barcode?: string | null
           created_at?: string
           email?: string
           emergency_contact?: string | null

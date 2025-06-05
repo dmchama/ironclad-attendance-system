@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Clock, CheckCircle, LogIn, LogOut, Calendar } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Clock, CheckCircle, LogIn, LogOut, Calendar, Scan } from "lucide-react";
 import { useGymStore } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
+import BarcodeScanner from "./BarcodeScanner";
 
 const AttendanceManagement = () => {
   const { users, attendance, addAttendance, updateAttendance } = useGymStore();
@@ -137,43 +139,63 @@ const AttendanceManagement = () => {
         </Card>
       </div>
 
-      {/* Check-in Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <LogIn className="h-5 w-5" />
-            Member Check-in
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Select Member</label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a member to check in" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users
-                    .filter(user => user.status === 'active')
-                    .map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name} - {user.membershipType}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button 
-              onClick={handleCheckIn}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              <LogIn className="h-4 w-4 mr-2" />
-              Check In
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Attendance Tabs */}
+      <Tabs defaultValue="scanner" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="scanner" className="flex items-center gap-2">
+            <Scan className="h-4 w-4" />
+            Barcode Scanner
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="flex items-center gap-2">
+            <LogIn className="h-4 w-4" />
+            Manual Check-in
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="scanner" className="space-y-4">
+          <BarcodeScanner />
+        </TabsContent>
+
+        <TabsContent value="manual" className="space-y-4">
+          {/* Manual Check-in Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LogIn className="h-5 w-5" />
+                Manual Member Check-in
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-2 block">Select Member</label>
+                  <Select value={selectedUser} onValueChange={setSelectedUser}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a member to check in" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users
+                        .filter(user => user.status === 'active')
+                        .map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} - {user.membershipType}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  onClick={handleCheckIn}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Check In
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Currently In Gym */}
       {activeCheckins.length > 0 && (

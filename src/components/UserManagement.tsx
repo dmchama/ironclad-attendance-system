@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,16 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Mail, Phone, Calendar, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Mail, Phone, Calendar, Loader2, QrCode } from "lucide-react";
 import { useGymStore, User } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
 
 const UserManagement = () => {
-  const { users, addUser, updateUser, deleteUser, loading } = useGymStore();
+  const { users, addUser, updateUser, deleteUser, generateBarcode, loading } = useGymStore();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [generatingBarcode, setGeneratingBarcode] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -35,6 +37,25 @@ const UserManagement = () => {
       status: 'active'
     });
     setEditingUser(null);
+  };
+
+  const handleGenerateBarcode = async (userId: string) => {
+    setGeneratingBarcode(userId);
+    try {
+      const barcode = await generateBarcode(userId);
+      toast({
+        title: "Success",
+        description: `Barcode generated: ${barcode}`
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate barcode. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingBarcode(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,13 +80,19 @@ const UserManagement = () => {
           description: "Member updated successfully"
         });
       } else {
+        // Generate barcode for new user
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 1000);
+        const barcode = `GYM${timestamp}${random}`;
+
         await addUser({
           ...formData,
-          joinDate: new Date().toISOString().split('T')[0]
+          joinDate: new Date().toISOString().split('T')[0],
+          barcode
         });
         toast({
           title: "Success",
-          description: "New member added successfully"
+          description: "New member added successfully with barcode"
         });
       }
 
@@ -286,6 +313,40 @@ const UserManagement = () => {
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar className="h-4 w-4" />
                 Joined: {new Date(user.joinDate).toLocaleDateString()}
+              </div>
+              
+              {/* Barcode Section */}
+              <div className="pt-3 border-t">
+                {user.barcode ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+                        {user.barcode}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleGenerateBarcode(user.id)}
+                    disabled={generatingBarcode === user.id}
+                    className="w-full"
+                  >
+                    {generatingBarcode === user.id ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="h-3 w-3 mr-2" />
+                        Generate Barcode
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
