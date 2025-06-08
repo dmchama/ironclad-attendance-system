@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -117,9 +116,10 @@ export const useGymStore = create<GymStore>((set, get) => ({
       const { data, error } = await supabase
         .from('gyms')
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) return;
 
       const gym: Gym = {
         id: data.id,
@@ -145,6 +145,12 @@ export const useGymStore = create<GymStore>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
+      // Generate a gym QR code using the database function
+      const { data: qrCodeData, error: qrError } = await supabase
+        .rpc('generate_gym_qr_code');
+
+      if (qrError) throw qrError;
+
       const { error } = await supabase
         .from('gyms')
         .insert({
@@ -153,7 +159,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
           phone: gymData.phone,
           address: gymData.address,
           owner_id: user.id,
-          status: gymData.status
+          status: gymData.status,
+          gym_qr_code: qrCodeData
         });
 
       if (error) throw error;
