@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Users, Calendar, DollarSign, UserCheck, LogOut, Building2 } from "lucide-react";
@@ -9,17 +8,21 @@ import Dashboard from "@/components/Dashboard";
 import GymProfile from "@/components/GymProfile";
 import GymSetup from "@/components/GymSetup";
 import AuthComponent from "@/components/AuthComponent";
+import LoginTypeSelector from "@/components/LoginTypeSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useGymStore } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [needsGymSetup, setNeedsGymSetup] = useState(false);
+  const [loginType, setLoginType] = useState<'admin' | 'member' | null>(null);
   const { fetchUsers, fetchAttendance, fetchPayments, fetchCurrentGym, currentGym } = useGymStore();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     checkAuth();
@@ -108,6 +111,14 @@ const Index = () => {
     checkGymSetup();
   };
 
+  const handleLoginTypeSelect = (type: 'admin' | 'member') => {
+    if (type === 'member') {
+      navigate('/member');
+    } else {
+      setLoginType(type);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -117,6 +128,10 @@ const Index = () => {
         </div>
       </div>
     );
+  }
+
+  if (!loginType) {
+    return <LoginTypeSelector onSelectType={handleLoginTypeSelect} />;
   }
 
   if (!isAuthenticated) {
