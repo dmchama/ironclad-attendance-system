@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,15 +55,26 @@ const MemberAuth = () => {
         return;
       }
 
+      // Add null check for gyms
+      if (!memberData.gyms) {
+        toast({
+          title: "Gym Information Missing",
+          description: "No gym information found for this member",
+          variant: "destructive"
+        });
+        return;
+      }
+
       setCurrentMember(memberData);
       setGymInfo(memberData.gyms);
-      setGymQrCode(memberData.gyms.gym_qr_code);
+      setGymQrCode(memberData.gyms.gym_qr_code || '');
       
       toast({
         title: "Welcome!",
-        description: `Hello ${memberData.name}, you can now check in at ${memberData.gyms.name}`,
+        description: `Hello ${memberData.name || 'Member'}, you can now check in at ${memberData.gyms.name || 'the gym'}`,
       });
     } catch (error: any) {
+      console.error('Member login error:', error);
       toast({
         title: "Error",
         description: "Failed to find member. Please try again.",
@@ -118,7 +130,7 @@ const MemberAuth = () => {
 
         toast({
           title: "Checked Out!",
-          description: `Thank you ${currentMember.name}! You worked out for ${duration} minutes today.`,
+          description: `Thank you ${currentMember.name || 'Member'}! You worked out for ${duration} minutes today.`,
         });
         
         setCheckedIn(false);
@@ -143,12 +155,13 @@ const MemberAuth = () => {
 
         toast({
           title: "Checked In!",
-          description: `Welcome to ${gymInfo.name}, ${currentMember.name}! Have a great workout!`,
+          description: `Welcome to ${gymInfo.name || 'the gym'}, ${currentMember.name || 'Member'}! Have a great workout!`,
         });
         
         setCheckedIn(true);
       }
     } catch (error: any) {
+      console.error('Check-in error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to check in. Please try again.",
@@ -224,16 +237,16 @@ const MemberAuth = () => {
             )}
           </div>
           <CardTitle className="text-2xl">
-            Welcome, {currentMember.name}!
+            Welcome, {currentMember?.name || 'Member'}!
           </CardTitle>
           <p className="text-gray-600">
-            {gymInfo.name}
+            {gymInfo?.name || 'Gym'}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-600 mb-2">Gym QR Code</p>
-            <p className="font-mono text-lg font-bold text-blue-600">{gymQrCode}</p>
+            <p className="font-mono text-lg font-bold text-blue-600">{gymQrCode || 'N/A'}</p>
           </div>
 
           <div className="flex gap-2">
@@ -257,7 +270,7 @@ const MemberAuth = () => {
 
           <div className="text-center space-y-2">
             <p className="text-sm text-gray-600">
-              Membership: {currentMember.membership_type.toUpperCase()}
+              Membership: {currentMember?.membership_type?.toUpperCase() || 'N/A'}
             </p>
             <Button
               onClick={resetSession}
