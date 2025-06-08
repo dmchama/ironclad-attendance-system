@@ -1,11 +1,13 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Users, Calendar, DollarSign, UserCheck, LogOut } from "lucide-react";
+import { Users, Calendar, DollarSign, UserCheck, LogOut, Building2 } from "lucide-react";
 import UserManagement from "@/components/UserManagement";
 import AttendanceManagement from "@/components/AttendanceManagement";
 import PaymentManagement from "@/components/PaymentManagement";
 import Dashboard from "@/components/Dashboard";
+import GymProfile from "@/components/GymProfile";
+import GymSetup from "@/components/GymSetup";
 import AuthComponent from "@/components/AuthComponent";
 import { supabase } from "@/integrations/supabase/client";
 import { useGymStore } from "@/store/gymStore";
@@ -15,7 +17,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { fetchUsers, fetchAttendance, fetchPayments } = useGymStore();
+  const [needsGymSetup, setNeedsGymSetup] = useState(false);
+  const { fetchUsers, fetchAttendance, fetchPayments, fetchCurrentGym, currentGym } = useGymStore();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -24,9 +27,15 @@ const Index = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadData();
+      checkGymSetup();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && currentGym) {
+      loadData();
+    }
+  }, [isAuthenticated, currentGym]);
 
   const checkAuth = async () => {
     try {
@@ -36,6 +45,22 @@ const Index = () => {
       console.error('Error checking auth:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkGymSetup = async () => {
+    try {
+      await fetchCurrentGym();
+      const { currentGym: gym } = useGymStore.getState();
+      
+      if (!gym) {
+        setNeedsGymSetup(true);
+      } else {
+        setNeedsGymSetup(false);
+      }
+    } catch (error) {
+      console.error('Error checking gym setup:', error);
+      setNeedsGymSetup(true);
     }
   };
 
@@ -63,6 +88,7 @@ const Index = () => {
       
       setIsAuthenticated(false);
       setActiveTab("dashboard");
+      setNeedsGymSetup(false);
       
       toast({
         title: "Success",
@@ -75,6 +101,11 @@ const Index = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleGymCreated = () => {
+    setNeedsGymSetup(false);
+    checkGymSetup();
   };
 
   if (loading) {
@@ -92,8 +123,13 @@ const Index = () => {
     return <AuthComponent onAuthSuccess={() => setIsAuthenticated(true)} />;
   }
 
+  if (needsGymSetup) {
+    return <GymSetup onGymCreated={handleGymCreated} />;
+  }
+
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: UserCheck },
+    { id: "profile", label: "Gym Profile", icon: Building2 },
     { id: "users", label: "Members", icon: Users },
     { id: "attendance", label: "Attendance", icon: Calendar },
     { id: "payments", label: "Payments", icon: DollarSign },
@@ -101,6 +137,8 @@ const Index = () => {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "profile":
+        return <GymProfile />;
       case "users":
         return <UserManagement />;
       case "attendance":
@@ -121,7 +159,9 @@ const Index = () => {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
               FitTrack Pro
             </h1>
-            <p className="text-gray-600">Complete gym management solution</p>
+            <p className="text-gray-600">
+              {currentGym ? `Managing ${currentGym.name}` : 'Complete gym management solution'}
+            </p>
           </div>
           <Button
             variant="outline"

@@ -16,6 +16,7 @@ export type Database = {
           created_at: string
           date: string
           duration: number | null
+          gym_id: string | null
           id: string
           member_id: string
         }
@@ -25,6 +26,7 @@ export type Database = {
           created_at?: string
           date?: string
           duration?: number | null
+          gym_id?: string | null
           id?: string
           member_id: string
         }
@@ -34,10 +36,18 @@ export type Database = {
           created_at?: string
           date?: string
           duration?: number | null
+          gym_id?: string | null
           id?: string
           member_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_member_id_fkey"
             columns: ["member_id"]
@@ -47,12 +57,52 @@ export type Database = {
           },
         ]
       }
+      gyms: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string
+          gym_qr_code: string
+          id: string
+          name: string
+          owner_id: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email: string
+          gym_qr_code: string
+          id?: string
+          name: string
+          owner_id?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string
+          gym_qr_code?: string
+          id?: string
+          name?: string
+          owner_id?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           barcode: string | null
           created_at: string
           email: string
           emergency_contact: string | null
+          gym_id: string | null
           id: string
           join_date: string
           membership_type: string
@@ -66,6 +116,7 @@ export type Database = {
           created_at?: string
           email: string
           emergency_contact?: string | null
+          gym_id?: string | null
           id?: string
           join_date?: string
           membership_type: string
@@ -79,6 +130,7 @@ export type Database = {
           created_at?: string
           email?: string
           emergency_contact?: string | null
+          gym_id?: string | null
           id?: string
           join_date?: string
           membership_type?: string
@@ -87,13 +139,22 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "members_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
           amount: number
           created_at: string
           due_date: string
+          gym_id: string | null
           id: string
           member_id: string
           membership_type: string
@@ -105,6 +166,7 @@ export type Database = {
           amount: number
           created_at?: string
           due_date: string
+          gym_id?: string | null
           id?: string
           member_id: string
           membership_type: string
@@ -116,6 +178,7 @@ export type Database = {
           amount?: number
           created_at?: string
           due_date?: string
+          gym_id?: string | null
           id?: string
           member_id?: string
           membership_type?: string
@@ -124,6 +187,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_member_id_fkey"
             columns: ["member_id"]
@@ -138,7 +208,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_gym_qr_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

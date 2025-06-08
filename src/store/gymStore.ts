@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -11,6 +12,20 @@ export interface User {
   status: 'active' | 'inactive' | 'suspended';
   emergencyContact: string;
   barcode?: string;
+  gymId?: string;
+}
+
+export interface Gym {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  gymQrCode: string;
+  ownerId: string;
+  status: 'active' | 'inactive' | 'suspended';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AttendanceRecord {
@@ -21,6 +36,7 @@ export interface AttendanceRecord {
   checkIn: string;
   checkOut?: string;
   duration?: number;
+  gymId?: string;
 }
 
 export interface Payment {
@@ -32,13 +48,20 @@ export interface Payment {
   paidDate?: string;
   status: 'pending' | 'paid' | 'overdue';
   membershipType: string;
+  gymId?: string;
 }
 
 interface GymStore {
   users: User[];
   attendance: AttendanceRecord[];
   payments: Payment[];
+  gyms: Gym[];
+  currentGym: Gym | null;
   loading: boolean;
+  fetchGyms: () => Promise<void>;
+  fetchCurrentGym: () => Promise<void>;
+  createGym: (gym: Omit<Gym, 'id' | 'gymQrCode' | 'ownerId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateGym: (id: string, gym: Partial<Gym>) => Promise<void>;
   fetchUsers: () => Promise<void>;
   fetchAttendance: () => Promise<void>;
   fetchPayments: () => Promise<void>;
@@ -50,20 +73,132 @@ interface GymStore {
   addPayment: (payment: Omit<Payment, 'id'>) => Promise<void>;
   updatePayment: (id: string, payment: Partial<Payment>) => Promise<void>;
   generateBarcode: (userId: string) => Promise<string>;
+  checkInWithGymQR: (gymQrCode: string) => Promise<void>;
 }
 
 export const useGymStore = create<GymStore>((set, get) => ({
   users: [],
   attendance: [],
   payments: [],
+  gyms: [],
+  currentGym: null,
   loading: false,
+
+  fetchGyms: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('gyms')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const gyms: Gym[] = data?.map(gym => ({
+        id: gym.id,
+        name: gym.name,
+        email: gym.email,
+        phone: gym.phone || '',
+        address: gym.address || '',
+        gymQrCode: gym.gym_qr_code,
+        ownerId: gym.owner_id,
+        status: gym.status as 'active' | 'inactive' | 'suspended',
+        createdAt: gym.created_at,
+        updatedAt: gym.updated_at
+      })) || [];
+
+      set({ gyms });
+    } catch (error) {
+      console.error('Error fetching gyms:', error);
+    }
+  },
+
+  fetchCurrentGym: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('gyms')
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      const gym: Gym = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        phone: data.phone || '',
+        address: data.address || '',
+        gymQrCode: data.gym_qr_code,
+        ownerId: data.owner_id,
+        status: data.status as 'active' | 'inactive' | 'suspended',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+
+      set({ currentGym: gym });
+    } catch (error) {
+      console.error('Error fetching current gym:', error);
+    }
+  },
+
+  createGym: async (gymData) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      const { error } = await supabase
+        .from('gyms')
+        .insert({
+          name: gymData.name,
+          email: gymData.email,
+          phone: gymData.phone,
+          address: gymData.address,
+          owner_id: user.id,
+          status: gymData.status
+        });
+
+      if (error) throw error;
+      
+      await get().fetchGyms();
+      await get().fetchCurrentGym();
+    } catch (error) {
+      console.error('Error creating gym:', error);
+      throw error;
+    }
+  },
+
+  updateGym: async (id, updatedGym) => {
+    try {
+      const { error } = await supabase
+        .from('gyms')
+        .update({
+          ...(updatedGym.name && { name: updatedGym.name }),
+          ...(updatedGym.email && { email: updatedGym.email }),
+          ...(updatedGym.phone !== undefined && { phone: updatedGym.phone }),
+          ...(updatedGym.address !== undefined && { address: updatedGym.address }),
+          ...(updatedGym.status && { status: updatedGym.status })
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await get().fetchGyms();
+      await get().fetchCurrentGym();
+    } catch (error) {
+      console.error('Error updating gym:', error);
+      throw error;
+    }
+  },
 
   fetchUsers: async () => {
     set({ loading: true });
     try {
+      const { currentGym } = get();
+      if (!currentGym) return;
+
       const { data, error } = await supabase
         .from('members')
         .select('*')
+        .eq('gym_id', currentGym.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -77,7 +212,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
         joinDate: member.join_date,
         status: member.status as 'active' | 'inactive' | 'suspended',
         emergencyContact: member.emergency_contact || '',
-        barcode: member.barcode || undefined
+        barcode: member.barcode || undefined,
+        gymId: member.gym_id
       })) || [];
 
       set({ users });
@@ -90,12 +226,16 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   fetchAttendance: async () => {
     try {
+      const { currentGym } = get();
+      if (!currentGym) return;
+
       const { data, error } = await supabase
         .from('attendance')
         .select(`
           *,
           members (name)
         `)
+        .eq('gym_id', currentGym.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -107,7 +247,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
         date: record.date,
         checkIn: record.check_in,
         checkOut: record.check_out || undefined,
-        duration: record.duration || undefined
+        duration: record.duration || undefined,
+        gymId: record.gym_id
       })) || [];
 
       set({ attendance });
@@ -118,12 +259,16 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   fetchPayments: async () => {
     try {
+      const { currentGym } = get();
+      if (!currentGym) return;
+
       const { data, error } = await supabase
         .from('payments')
         .select(`
           *,
           members (name)
         `)
+        .eq('gym_id', currentGym.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -136,7 +281,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
         dueDate: payment.due_date,
         paidDate: payment.paid_date || undefined,
         status: payment.status as 'pending' | 'paid' | 'overdue',
-        membershipType: payment.membership_type
+        membershipType: payment.membership_type,
+        gymId: payment.gym_id
       })) || [];
 
       set({ payments });
@@ -147,6 +293,9 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   addUser: async (user) => {
     try {
+      const { currentGym } = get();
+      if (!currentGym) throw new Error('No current gym selected');
+
       const { error } = await supabase
         .from('members')
         .insert({
@@ -157,7 +306,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
           join_date: user.joinDate,
           status: user.status,
           emergency_contact: user.emergencyContact,
-          barcode: user.barcode
+          barcode: user.barcode,
+          gym_id: currentGym.id
         });
 
       if (error) throw error;
@@ -211,6 +361,9 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   addAttendance: async (attendance) => {
     try {
+      const { currentGym } = get();
+      if (!currentGym) throw new Error('No current gym selected');
+
       const { error } = await supabase
         .from('attendance')
         .insert({
@@ -218,7 +371,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
           date: attendance.date,
           check_in: attendance.checkIn,
           check_out: attendance.checkOut || null,
-          duration: attendance.duration || null
+          duration: attendance.duration || null,
+          gym_id: currentGym.id
         });
 
       if (error) throw error;
@@ -251,6 +405,9 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   addPayment: async (payment) => {
     try {
+      const { currentGym } = get();
+      if (!currentGym) throw new Error('No current gym selected');
+
       const { error } = await supabase
         .from('payments')
         .insert({
@@ -259,7 +416,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
           due_date: payment.dueDate,
           paid_date: payment.paidDate || null,
           status: payment.status,
-          membership_type: payment.membershipType
+          membership_type: payment.membershipType,
+          gym_id: currentGym.id
         });
 
       if (error) throw error;
@@ -292,12 +450,10 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   generateBarcode: async (userId: string) => {
     try {
-      // Generate a unique barcode using timestamp and random number
       const timestamp = Date.now();
       const random = Math.floor(Math.random() * 1000);
       const barcode = `GYM${timestamp}${random}`;
       
-      // Update the user with the new barcode
       const { error } = await supabase
         .from('members')
         .update({ barcode })
@@ -309,6 +465,26 @@ export const useGymStore = create<GymStore>((set, get) => ({
       return barcode;
     } catch (error) {
       console.error('Error generating barcode:', error);
+      throw error;
+    }
+  },
+
+  checkInWithGymQR: async (gymQrCode: string) => {
+    try {
+      // Find the gym by QR code
+      const { data: gymData, error: gymError } = await supabase
+        .from('gyms')
+        .select('*')
+        .eq('gym_qr_code', gymQrCode)
+        .single();
+
+      if (gymError) throw gymError;
+
+      // This would be used when a member scans the gym QR code
+      // For now, just return success - this can be expanded based on your needs
+      console.log('Gym found for QR code:', gymData);
+    } catch (error) {
+      console.error('Error checking in with gym QR:', error);
       throw error;
     }
   },
