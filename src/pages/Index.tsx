@@ -18,11 +18,16 @@ const Index = () => {
     }
   };
 
+  const handleAuthSuccess = () => {
+    // Handle successful authentication for admin
+    console.log('Admin authenticated successfully');
+  };
+
   if (!selectedType) {
     return <LoginTypeSelector onSelectType={handleSelectType} />;
   }
 
-  return <AuthComponent />;
+  return <AuthComponent onAuthSuccess={handleAuthSuccess} />;
 };
 
 export default Index;
