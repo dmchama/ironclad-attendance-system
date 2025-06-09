@@ -1,10 +1,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, User } from 'lucide-react';
+import { Building2, User, Shield } from 'lucide-react';
 
 interface LoginTypeSelectorProps {
-  onSelectType: (type: 'admin' | 'member') => void;
+  onSelectType: (type: 'admin' | 'member' | 'super_admin') => void;
 }
 
 const LoginTypeSelector = ({ onSelectType }: LoginTypeSelectorProps) => {
@@ -20,6 +20,17 @@ const LoginTypeSelector = ({ onSelectType }: LoginTypeSelectorProps) => {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <Button
+            onClick={() => onSelectType('super_admin')}
+            className="w-full h-16 bg-gradient-to-r from-purple-600 to-red-600 hover:from-purple-700 hover:to-red-700 flex items-center justify-center gap-3"
+          >
+            <Shield className="w-6 h-6" />
+            <div className="text-left">
+              <div className="font-semibold">Super Admin</div>
+              <div className="text-sm opacity-90">Manage all gyms</div>
+            </div>
+          </Button>
+
           <Button
             onClick={() => onSelectType('admin')}
             className="w-full h-16 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex items-center justify-center gap-3"
