@@ -11,7 +11,11 @@ import { useGymStore, User } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
 import BarcodeShareDialog from "./BarcodeShareDialog";
 
-const UserManagement = () => {
+interface UserManagementProps {
+  gymId: string;
+}
+
+const UserManagement = ({ gymId }: UserManagementProps) => {
   const { users, addUser, updateUser, deleteUser, generateBarcode, loading } = useGymStore();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -96,7 +100,7 @@ const UserManagement = () => {
           ...formData,
           joinDate: new Date().toISOString().split('T')[0],
           barcode
-        });
+        }, gymId);
         toast({
           title: "Success",
           description: "New member added successfully with unique barcode"
@@ -322,7 +326,6 @@ const UserManagement = () => {
                 Joined: {new Date(user.joinDate).toLocaleDateString()}
               </div>
               
-              {/* Enhanced Barcode Section */}
               <div className="pt-3 border-t">
                 {user.barcode ? (
                   <div className="space-y-2">
@@ -383,7 +386,6 @@ const UserManagement = () => {
         </Card>
       )}
 
-      {/* Barcode Share Dialog */}
       {selectedUser && (
         <BarcodeShareDialog
           open={shareDialogOpen}

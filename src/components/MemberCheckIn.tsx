@@ -8,8 +8,13 @@ import { QrCode, Camera, Clock, CheckCircle } from 'lucide-react';
 import { useGymStore } from '@/store/gymStore';
 import { useToast } from '@/hooks/use-toast';
 
-const MemberCheckIn = () => {
-  const { checkInWithGymQR } = useGymStore();
+interface MemberCheckInProps {
+  memberId: string;
+  onCheckInSuccess?: () => void;
+}
+
+const MemberCheckIn = ({ memberId, onCheckInSuccess }: MemberCheckInProps) => {
+  const { memberCheckInWithQR } = useGymStore();
   const { toast } = useToast();
   const [gymQrCode, setGymQrCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,12 +32,21 @@ const MemberCheckIn = () => {
 
     setLoading(true);
     try {
-      await checkInWithGymQR(gymQrCode);
-      setCheckedIn(true);
-      toast({
-        title: "Success",
-        description: "Successfully checked in to the gym!"
-      });
+      const result = await memberCheckInWithQR(memberId, gymQrCode);
+      if (result.success) {
+        setCheckedIn(true);
+        toast({
+          title: "Success",
+          description: result.message
+        });
+        onCheckInSuccess?.();
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive"
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Error",
