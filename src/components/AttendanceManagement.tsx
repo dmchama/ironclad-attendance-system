@@ -11,13 +11,17 @@ import { useGymStore } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
 import BarcodeScanner from "./BarcodeScanner";
 
-const AttendanceManagement = () => {
+interface AttendanceManagementProps {
+  gymId: string;
+}
+
+const AttendanceManagement = ({ gymId }: AttendanceManagementProps) => {
   const { users, attendance, addAttendance, updateAttendance } = useGymStore();
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState("");
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     if (!selectedUser) {
       toast({
         title: "Error",
@@ -50,21 +54,30 @@ const AttendanceManagement = () => {
     const now = new Date();
     const timeString = now.toTimeString().slice(0, 5);
 
-    addAttendance({
-      userId: selectedUser,
-      userName: user.name,
-      date: new Date().toISOString().split('T')[0],
-      checkIn: timeString
-    });
+    try {
+      await addAttendance({
+        userId: selectedUser,
+        userName: user.name,
+        date: new Date().toISOString().split('T')[0],
+        checkIn: timeString,
+        gymId
+      });
 
-    toast({
-      title: "Success",
-      description: `${user.name} checked in at ${timeString}`
-    });
-    setSelectedUser("");
+      toast({
+        title: "Success",
+        description: `${user.name} checked in at ${timeString}`
+      });
+      setSelectedUser("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to check in member",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleCheckOut = (recordId: string) => {
+  const handleCheckOut = async (recordId: string) => {
     const record = attendance.find(r => r.id === recordId);
     if (!record || record.checkOut) return;
 
@@ -74,15 +87,23 @@ const AttendanceManagement = () => {
     const checkOutTime = new Date(`2000-01-01T${timeString}:00`);
     const duration = Math.round((checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60));
 
-    updateAttendance(recordId, {
-      checkOut: timeString,
-      duration
-    });
+    try {
+      await updateAttendance(recordId, {
+        checkOut: timeString,
+        duration
+      });
 
-    toast({
-      title: "Success",
-      description: `${record.userName} checked out at ${timeString}`
-    });
+      toast({
+        title: "Success",
+        description: `${record.userName} checked out at ${timeString}`
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to check out member",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredAttendance = attendance.filter(record => record.date === dateFilter);

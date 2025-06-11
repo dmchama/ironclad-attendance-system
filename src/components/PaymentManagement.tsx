@@ -9,7 +9,11 @@ import { DollarSign, CreditCard, AlertCircle, CheckCircle, Clock } from "lucide-
 import { useGymStore } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
 
-const PaymentManagement = () => {
+interface PaymentManagementProps {
+  gymId: string;
+}
+
+const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
   const { users, payments, addPayment, updatePayment } = useGymStore();
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState("");
@@ -21,7 +25,7 @@ const PaymentManagement = () => {
     vip: 99.99
   };
 
-  const handleAddPayment = () => {
+  const handleAddPayment = async () => {
     if (!selectedUser) {
       toast({
         title: "Error",
@@ -40,34 +44,51 @@ const PaymentManagement = () => {
     const nextDueDate = new Date();
     nextDueDate.setMonth(nextDueDate.getMonth() + 1);
 
-    addPayment({
-      userId: selectedUser,
-      userName: user.name,
-      amount,
-      dueDate: nextDueDate.toISOString().split('T')[0],
-      status: 'pending',
-      membershipType: user.membershipType
-    });
+    try {
+      await addPayment({
+        userId: selectedUser,
+        userName: user.name,
+        amount,
+        dueDate: nextDueDate.toISOString().split('T')[0],
+        status: 'pending',
+        membershipType: user.membershipType,
+        gymId
+      });
 
-    toast({
-      title: "Success",
-      description: `Payment record added for ${user.name}`
-    });
+      toast({
+        title: "Success",
+        description: `Payment record added for ${user.name}`
+      });
 
-    setSelectedUser("");
-    setPaymentAmount("");
+      setSelectedUser("");
+      setPaymentAmount("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add payment record",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleMarkAsPaid = (paymentId: string) => {
-    updatePayment(paymentId, {
-      status: 'paid',
-      paidDate: new Date().toISOString().split('T')[0]
-    });
+  const handleMarkAsPaid = async (paymentId: string) => {
+    try {
+      await updatePayment(paymentId, {
+        status: 'paid',
+        paidDate: new Date().toISOString().split('T')[0]
+      });
 
-    toast({
-      title: "Success",
-      description: "Payment marked as paid"
-    });
+      toast({
+        title: "Success",
+        description: "Payment marked as paid"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update payment",
+        variant: "destructive"
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {

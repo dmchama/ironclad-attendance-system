@@ -45,6 +45,7 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
         fetchPayments(gymId)
       ]);
     } catch (error: any) {
+      console.error('Error loading gym data:', error);
       toast({
         title: "Error",
         description: "Failed to load data",
@@ -236,12 +237,12 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
 
           {/* Attendance Tab */}
           <TabsContent value="attendance">
-            <AttendanceManagement />
+            <AttendanceManagement gymId={gymId} />
           </TabsContent>
 
           {/* Payments Tab */}
           <TabsContent value="payments">
-            <PaymentManagement />
+            <PaymentManagement gymId={gymId} />
           </TabsContent>
         </Tabs>
       </div>
