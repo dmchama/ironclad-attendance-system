@@ -2,27 +2,14 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Building2, Plus, Edit, Trash2, LogOut, User, Users, Calendar, Key, QrCode } from 'lucide-react';
+import { Building2, Users, Calendar, DollarSign, LogOut, QrCode, TrendingUp, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-
-interface Member {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  membership_type: string;
-  join_date: string;
-  status: string;
-  emergency_contact: string;
-  username: string;
-  barcode: string;
-}
+import { useGymStore } from '@/store/gymStore';
+import UserManagement from './UserManagement';
+import AttendanceManagement from './AttendanceManagement';
+import PaymentManagement from './PaymentManagement';
 
 interface GymAdminDashboardProps {
   gymId: string;
@@ -32,57 +19,35 @@ interface GymAdminDashboardProps {
 
 const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps) => {
   const { toast } = useToast();
-  const [members, setMembers] = useState<Member[]>([]);
+  const { 
+    users, 
+    attendance, 
+    payments, 
+    currentGym,
+    fetchUsers, 
+    fetchAttendance, 
+    fetchPayments,
+    fetchCurrentGym 
+  } = useGymStore();
   const [loading, setLoading] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [gymQrCode, setGymQrCode] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    membership_type: 'basic',
-    emergency_contact: '',
-    username: '',
-    password: '',
-    status: 'active'
-  });
 
   useEffect(() => {
-    fetchMembers();
-    fetchGymDetails();
+    loadData();
   }, [gymId]);
 
-  const fetchGymDetails = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('gyms')
-        .select('gym_qr_code')
-        .eq('id', gymId)
-        .single();
-
-      if (error) throw error;
-      setGymQrCode(data.gym_qr_code);
-    } catch (error: any) {
-      console.error('Error fetching gym details:', error);
-    }
-  };
-
-  const fetchMembers = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('gym_id', gymId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setMembers(data || []);
+      await Promise.all([
+        fetchCurrentGym(gymId),
+        fetchUsers(gymId),
+        fetchAttendance(gymId),
+        fetchPayments(gymId)
+      ]);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to fetch members",
+        description: "Failed to load data",
         variant: "destructive"
       });
     } finally {
@@ -90,158 +55,19 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.email || !formData.username || (!selectedMember && !formData.password)) {
-      toast({
-        title: "Error",
-        description: "Name, email, username and password are required",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (selectedMember) {
-        // Update existing member
-        const updateData: any = {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          membership_type: formData.membership_type,
-          emergency_contact: formData.emergency_contact || null,
-          username: formData.username,
-          status: formData.status
-        };
-
-        // Only update password if provided
-        if (formData.password) {
-          const { data: hashedPassword, error: hashError } = await supabase
-            .rpc('hash_password', { password: formData.password });
-          
-          if (hashError) throw hashError;
-          updateData.password_hash = hashedPassword;
-        }
-
-        const { error } = await supabase
-          .from('members')
-          .update(updateData)
-          .eq('id', selectedMember.id);
-
-        if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "Member updated successfully"
-        });
-      } else {
-        // Create new member
-        const { data: hashedPassword, error: hashError } = await supabase
-          .rpc('hash_password', { password: formData.password });
-        
-        if (hashError) throw hashError;
-
-        // Generate barcode
-        const timestamp = Date.now();
-        const random = Math.floor(Math.random() * 1000);
-        const barcode = `MBR${timestamp}${random}`;
-
-        const { error } = await supabase
-          .from('members')
-          .insert({
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            membership_type: formData.membership_type,
-            emergency_contact: formData.emergency_contact || null,
-            username: formData.username,
-            password_hash: hashedPassword,
-            status: formData.status,
-            gym_id: gymId,
-            barcode: barcode,
-            join_date: new Date().toISOString().split('T')[0]
-          });
-
-        if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "Member created successfully"
-        });
-      }
-
-      await fetchMembers();
-      resetForm();
-      setIsDialogOpen(false);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save member",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEdit = (member: Member) => {
-    setSelectedMember(member);
-    setFormData({
-      name: member.name,
-      email: member.email,
-      phone: member.phone,
-      membership_type: member.membership_type,
-      emergency_contact: member.emergency_contact || '',
-      username: member.username || '',
-      password: '',
-      status: member.status
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = async (memberId: string) => {
-    try {
-      const { error } = await supabase
-        .from('members')
-        .delete()
-        .eq('id', memberId);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: "Member deleted successfully"
-      });
-      
-      await fetchMembers();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete member",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const resetForm = () => {
-    setSelectedMember(null);
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      membership_type: 'basic',
-      emergency_contact: '',
-      username: '',
-      password: '',
-      status: 'active'
-    });
-  };
+  // Calculate dashboard stats
+  const totalMembers = users.length;
+  const activeMembers = users.filter(u => u.status === 'active').length;
+  const todaysAttendance = attendance.filter(a => a.date === new Date().toISOString().split('T')[0]).length;
+  const pendingPayments = payments.filter(p => p.status === 'pending').length;
+  const monthlyRevenue = payments
+    .filter(p => p.status === 'paid' && new Date(p.paidDate || '').getMonth() === new Date().getMonth())
+    .reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
@@ -258,7 +84,8 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
           </Button>
         </div>
 
-        {gymQrCode && (
+        {/* Gym QR Code */}
+        {currentGym?.gymQrCode && (
           <Card className="mb-6 bg-gradient-to-r from-green-50 to-blue-50">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -266,232 +93,157 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
                 <div>
                   <h3 className="font-semibold text-lg">Gym QR Code</h3>
                   <p className="text-sm text-gray-600">Members scan this code to mark attendance</p>
-                  <p className="font-mono text-lg font-bold text-green-700">{gymQrCode}</p>
+                  <p className="font-mono text-lg font-bold text-green-700">{currentGym.gymQrCode}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Members ({members.length})
-          </h2>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Member
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {selectedMember ? 'Edit Member' : 'Create New Member'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Enter full name"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="member@example.com"
-                      required
-                    />
-                  </div>
-                </div>
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="members" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Members
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Attendance
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Payments
+            </TabsTrigger>
+          </TabsList>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="membership_type">Membership Type</Label>
-                    <select
-                      id="membership_type"
-                      value={formData.membership_type}
-                      onChange={(e) => setFormData({ ...formData, membership_type: e.target.value })}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    >
-                      <option value="basic">Basic</option>
-                      <option value="premium">Premium</option>
-                      <option value="vip">VIP</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="emergency_contact">Emergency Contact</Label>
-                  <Input
-                    id="emergency_contact"
-                    value={formData.emergency_contact}
-                    onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })}
-                    placeholder="Emergency contact details"
-                  />
-                </div>
-
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <Key className="w-5 h-5" />
-                    Login Credentials
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Dashboard Overview */}
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="username">Username *</Label>
-                      <Input
-                        id="username"
-                        value={formData.username}
-                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                        placeholder="member_username"
-                        required
-                      />
+                      <p className="text-blue-100">Total Members</p>
+                      <p className="text-3xl font-bold">{totalMembers}</p>
                     </div>
-                    
+                    <Users className="h-10 w-10 text-blue-200" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="password">
-                        Password {!selectedMember && '*'}
-                        {selectedMember && <span className="text-sm text-gray-500">(leave empty to keep current)</span>}
-                      </Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        placeholder="Enter password"
-                        required={!selectedMember}
-                      />
+                      <p className="text-green-100">Active Members</p>
+                      <p className="text-3xl font-bold">{activeMembers}</p>
                     </div>
+                    <Users className="h-10 w-10 text-green-200" />
                   </div>
-                </div>
-                
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Saving...' : (selectedMember ? 'Update Member' : 'Create Member')}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+                </CardContent>
+              </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {members.map((member) => (
-            <Card key={member.id}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <User className="w-5 h-5 text-blue-600" />
-                    <CardTitle className="text-lg">{member.name}</CardTitle>
+              <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-purple-100">Today's Check-ins</p>
+                      <p className="text-3xl font-bold">{todaysAttendance}</p>
+                    </div>
+                    <Clock className="h-10 w-10 text-purple-200" />
                   </div>
-                  <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
-                    {member.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Email:</p>
-                  <p className="text-sm text-gray-600">{member.email}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Phone:</p>
-                  <p className="text-sm text-gray-600">{member.phone}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Membership:</p>
-                  <p className="text-sm text-gray-600 capitalize">{member.membership_type}</p>
-                </div>
+                </CardContent>
+              </Card>
 
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Username:</p>
-                  <p className="text-sm text-gray-600 font-mono">{member.username}</p>
-                </div>
-
-                {member.barcode && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Barcode:</p>
-                    <p className="text-sm text-gray-600 font-mono">{member.barcode}</p>
+              <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-orange-100">Monthly Revenue</p>
+                      <p className="text-3xl font-bold">${monthlyRevenue.toFixed(2)}</p>
+                    </div>
+                    <DollarSign className="h-10 w-10 text-orange-200" />
                   </div>
-                )}
-                
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Join Date:</p>
-                  <p className="text-sm text-gray-600">{new Date(member.join_date).toLocaleDateString()}</p>
-                </div>
-                
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(member)}
-                    className="flex-1"
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button size="sm" variant="destructive" className="flex-1">
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Delete
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Member</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete "{member.name}"? This action cannot be undone and will remove all associated data.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(member.id)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            </div>
 
-        {members.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No members found</h3>
-            <p className="text-gray-600 mb-4">Get started by adding your first member.</p>
-          </div>
-        )}
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Recent Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {attendance.slice(0, 5).map((record) => (
+                      <div key={record.id} className="flex items-center justify-between p-2 border rounded">
+                        <div>
+                          <p className="font-medium">{record.userName}</p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(record.date).toLocaleDateString()} at {record.checkIn}
+                          </p>
+                        </div>
+                        <Badge variant="outline">Check-in</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Payment Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {pendingPayments > 0 ? (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p className="font-medium text-yellow-800">
+                          {pendingPayments} Pending Payment{pendingPayments > 1 ? 's' : ''}
+                        </p>
+                        <p className="text-sm text-yellow-600">
+                          Review payment status in the Payments tab
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded">
+                        <p className="font-medium text-green-800">All Payments Up to Date</p>
+                        <p className="text-sm text-green-600">No pending payments</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Members Tab */}
+          <TabsContent value="members">
+            <UserManagement gymId={gymId} />
+          </TabsContent>
+
+          {/* Attendance Tab */}
+          <TabsContent value="attendance">
+            <AttendanceManagement />
+          </TabsContent>
+
+          {/* Payments Tab */}
+          <TabsContent value="payments">
+            <PaymentManagement />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
