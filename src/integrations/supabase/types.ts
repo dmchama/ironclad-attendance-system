@@ -60,39 +60,51 @@ export type Database = {
       gyms: {
         Row: {
           address: string | null
+          admin_email: string | null
+          admin_name: string | null
           created_at: string
           email: string
           gym_qr_code: string
           id: string
           name: string
           owner_id: string | null
+          password_hash: string | null
           phone: string | null
           status: string
           updated_at: string
+          username: string | null
         }
         Insert: {
           address?: string | null
+          admin_email?: string | null
+          admin_name?: string | null
           created_at?: string
           email: string
           gym_qr_code: string
           id?: string
           name: string
           owner_id?: string | null
+          password_hash?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
+          username?: string | null
         }
         Update: {
           address?: string | null
+          admin_email?: string | null
+          admin_name?: string | null
           created_at?: string
           email?: string
           gym_qr_code?: string
           id?: string
           name?: string
           owner_id?: string | null
+          password_hash?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -107,9 +119,11 @@ export type Database = {
           join_date: string
           membership_type: string
           name: string
+          password_hash: string | null
           phone: string
           status: string
           updated_at: string
+          username: string | null
         }
         Insert: {
           barcode?: string | null
@@ -121,9 +135,11 @@ export type Database = {
           join_date?: string
           membership_type: string
           name: string
+          password_hash?: string | null
           phone: string
           status?: string
           updated_at?: string
+          username?: string | null
         }
         Update: {
           barcode?: string | null
@@ -135,9 +151,11 @@ export type Database = {
           join_date?: string
           membership_type?: string
           name?: string
+          password_hash?: string | null
           phone?: string
           status?: string
           updated_at?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -229,13 +247,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authenticate_gym_admin: {
+        Args: { input_username: string; input_password: string }
+        Returns: {
+          gym_id: string
+          gym_name: string
+          is_authenticated: boolean
+        }[]
+      }
+      authenticate_member: {
+        Args: { input_username: string; input_password: string }
+        Returns: {
+          member_id: string
+          member_name: string
+          gym_id: string
+          is_authenticated: boolean
+        }[]
+      }
       generate_gym_qr_code: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      hash_password: {
+        Args: { password: string }
         Returns: string
       }
       is_super_admin: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      member_checkin_with_qr: {
+        Args: { member_id: string; gym_qr_code: string }
+        Returns: {
+          success: boolean
+          message: string
+          gym_name: string
+        }[]
       }
     }
     Enums: {
