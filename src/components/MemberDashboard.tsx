@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { QrCode, User, Clock, CheckCircle, LogOut, Scan } from 'lucide-react';
+import { QrCode, User, Clock, CheckCircle, LogOut, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import QRScannerComponent from './QRScanner';
 
 interface MemberDashboardProps {
   memberId: string;
@@ -18,6 +19,7 @@ interface MemberDashboardProps {
 const MemberDashboard = ({ memberId, memberName, gymId, onLogout }: MemberDashboardProps) => {
   const [qrCode, setQrCode] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [lastActivity, setLastActivity] = useState<{
     success: boolean;
     message: string;
@@ -31,12 +33,16 @@ const MemberDashboard = ({ memberId, memberName, gymId, onLogout }: MemberDashbo
     e.preventDefault();
     if (!qrCode.trim()) return;
 
+    await processQRCode(qrCode.trim());
+  };
+
+  const processQRCode = async (qrCodeValue: string) => {
     setScanning(true);
     try {
       const { data, error } = await supabase
         .rpc('member_checkin_with_qr', {
           member_id: memberId,
-          gym_qr_code: qrCode.trim()
+          gym_qr_code: qrCodeValue
         });
 
       if (error) throw error;
@@ -79,6 +85,12 @@ const MemberDashboard = ({ memberId, memberName, gymId, onLogout }: MemberDashbo
         inputRef.current?.focus();
       }, 100);
     }
+  };
+
+  const handleScanSuccess = (result: string) => {
+    setShowScanner(false);
+    setQrCode(result);
+    processQRCode(result);
   };
 
   const handleManualEntry = () => {
@@ -132,6 +144,16 @@ const MemberDashboard = ({ memberId, memberName, gymId, onLogout }: MemberDashbo
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={scanning}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Scan with Camera
+                  </Button>
                   <Button 
                     type="submit" 
                     className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
@@ -149,22 +171,15 @@ const MemberDashboard = ({ memberId, memberName, gymId, onLogout }: MemberDashbo
                       </>
                     )}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleManualEntry}
-                    className="px-6"
-                  >
-                    <Scan className="h-4 w-4" />
-                  </Button>
                 </div>
               </form>
 
               <div className="text-center text-sm text-gray-600 bg-white p-3 rounded-lg">
                 <p><strong>How to use:</strong></p>
-                <p>1. Focus on the input field above</p>
-                <p>2. Scan the gym's QR code or type it manually</p>
-                <p>3. Click "Check In/Out" to mark your attendance</p>
+                <p>1. Click "Scan with Camera" to use your device camera</p>
+                <p>2. Point camera at the gym's QR code</p>
+                <p>3. Or manually enter the QR code in the field above</p>
+                <p>4. Your attendance will be marked automatically</p>
               </div>
             </CardContent>
           </Card>
@@ -225,6 +240,13 @@ const MemberDashboard = ({ memberId, memberName, gymId, onLogout }: MemberDashbo
           </Card>
         </div>
       </div>
+
+      {/* QR Scanner Modal */}
+      <QRScannerComponent
+        isOpen={showScanner}
+        onScanSuccess={handleScanSuccess}
+        onClose={() => setShowScanner(false)}
+      />
     </div>
   );
 };
