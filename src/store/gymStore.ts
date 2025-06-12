@@ -307,6 +307,12 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   addUser: async (user, gymId) => {
     try {
+      // Hash the password before storing
+      const { data: hashedPassword, error: hashError } = await supabase
+        .rpc('hash_password', { password: user.password || 'defaultpass123' });
+
+      if (hashError) throw hashError;
+
       const { error } = await supabase
         .from('members')
         .insert({
@@ -319,6 +325,7 @@ export const useGymStore = create<GymStore>((set, get) => ({
           emergency_contact: user.emergencyContact,
           barcode: user.barcode,
           username: user.username,
+          password_hash: hashedPassword,
           gym_id: gymId
         });
 
@@ -343,6 +350,15 @@ export const useGymStore = create<GymStore>((set, get) => ({
       if (updatedUser.emergencyContact !== undefined) updateData.emergency_contact = updatedUser.emergencyContact;
       if (updatedUser.barcode !== undefined) updateData.barcode = updatedUser.barcode;
       if (updatedUser.username) updateData.username = updatedUser.username;
+      
+      // Only update password if a new one is provided
+      if (updatedUser.password && updatedUser.password.trim() !== '') {
+        const { data: hashedPassword, error: hashError } = await supabase
+          .rpc('hash_password', { password: updatedUser.password });
+
+        if (hashError) throw hashError;
+        updateData.password_hash = hashedPassword;
+      }
 
       const { error } = await supabase
         .from('members')

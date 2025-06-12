@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Mail, Phone, Calendar, Loader2, QrCode, Share } from "lucide-react";
-import { useGymStore, User } from "@/store/gymStore";
+import { Plus, Edit, Trash2, Mail, Phone, Calendar, Loader2, QrCode, Share, User, Lock } from "lucide-react";
+import { useGymStore, User as UserType } from "@/store/gymStore";
 import { useToast } from "@/hooks/use-toast";
 import BarcodeShareDialog from "./BarcodeShareDialog";
 
@@ -19,18 +20,20 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
   const { users, addUser, updateUser, deleteUser, generateBarcode, loading } = useGymStore();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [generatingBarcode, setGeneratingBarcode] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     membershipType: 'basic' as 'basic' | 'premium' | 'vip',
     emergencyContact: '',
-    status: 'active' as 'active' | 'inactive' | 'suspended'
+    status: 'active' as 'active' | 'inactive' | 'suspended',
+    username: '',
+    password: ''
   });
 
   const resetForm = () => {
@@ -40,7 +43,9 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       phone: '',
       membershipType: 'basic',
       emergencyContact: '',
-      status: 'active'
+      status: 'active',
+      username: '',
+      password: ''
     });
     setEditingUser(null);
   };
@@ -64,7 +69,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     }
   };
 
-  const handleShareBarcode = (user: User) => {
+  const handleShareBarcode = (user: UserType) => {
     setSelectedUser(user);
     setShareDialogOpen(true);
   };
@@ -72,10 +77,10 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.phone) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.username || !formData.password) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields including username and password",
         variant: "destructive"
       });
       return;
@@ -103,7 +108,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
         }, gymId);
         toast({
           title: "Success",
-          description: "New member added successfully with unique barcode"
+          description: "New member added successfully with login credentials"
         });
       }
 
@@ -120,7 +125,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     }
   };
 
-  const handleEdit = (user: User) => {
+  const handleEdit = (user: UserType) => {
     setEditingUser(user);
     setFormData({
       name: user.name,
@@ -128,7 +133,9 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       phone: user.phone,
       membershipType: user.membershipType,
       emergencyContact: user.emergencyContact,
-      status: user.status
+      status: user.status,
+      username: user.username || '',
+      password: '' // Don't show existing password
     });
     setIsDialogOpen(true);
   };
@@ -195,7 +202,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
               Add Member
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingUser ? 'Edit Member' : 'Add New Member'}</DialogTitle>
             </DialogHeader>
@@ -229,6 +236,27 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="Enter phone number"
                   required
+                />
+              </div>
+              <div>
+                <Label htmlFor="username">Username *</Label>
+                <Input
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  placeholder="Enter username for login"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Password *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder={editingUser ? "Enter new password (leave blank to keep current)" : "Enter password"}
+                  required={!editingUser}
                 />
               </div>
               <div>
@@ -326,6 +354,23 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                 Joined: {new Date(user.joinDate).toLocaleDateString()}
               </div>
               
+              {/* Login Details Section */}
+              {user.username && (
+                <div className="pt-2 border-t">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                    <User className="h-4 w-4" />
+                    <span className="font-medium">Login Details:</span>
+                  </div>
+                  <div className="ml-6">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
+                        {user.username}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="pt-3 border-t">
                 {user.barcode ? (
                   <div className="space-y-2">
@@ -397,6 +442,42 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       )}
     </div>
   );
+
+  function getMembershipColor(type: string) {
+    switch (type) {
+      case 'basic': return 'bg-blue-100 text-blue-800';
+      case 'premium': return 'bg-purple-100 text-purple-800';
+      case 'vip': return 'bg-gold-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  }
+
+  function getStatusColor(status: string) {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'inactive': return 'bg-gray-100 text-gray-800';
+      case 'suspended': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (window.confirm('Are you sure you want to delete this member?')) {
+      try {
+        await deleteUser(id);
+        toast({
+          title: "Success",
+          description: "Member deleted successfully"
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete member. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  }
 };
 
 export default UserManagement;
