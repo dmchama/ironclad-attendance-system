@@ -10,6 +10,7 @@ import { useGymStore } from '@/store/gymStore';
 import UserManagement from './UserManagement';
 import AttendanceManagement from './AttendanceManagement';
 import PaymentManagement from './PaymentManagement';
+import GymProfile from './GymProfile';
 
 interface GymAdminDashboardProps {
   gymId: string;
@@ -85,25 +86,13 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
           </Button>
         </div>
 
-        {/* Gym QR Code */}
-        {currentGym?.gymQrCode && (
-          <Card className="mb-6 bg-gradient-to-r from-green-50 to-blue-50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <QrCode className="w-8 h-8 text-green-600" />
-                <div>
-                  <h3 className="font-semibold text-lg">Gym QR Code</h3>
-                  <p className="text-sm text-gray-600">Members scan this code to mark attendance</p>
-                  <p className="font-mono text-lg font-bold text-green-700">{currentGym.gymQrCode}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Main Content Tabs */}
-        <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <QrCode className="w-4 h-4" />
+              Profile & QR
+            </TabsTrigger>
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Dashboard
@@ -121,6 +110,11 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
               Payments
             </TabsTrigger>
           </TabsList>
+
+          {/* Gym Profile Tab */}
+          <TabsContent value="profile">
+            <GymProfile />
+          </TabsContent>
 
           {/* Dashboard Overview */}
           <TabsContent value="dashboard" className="space-y-6">
