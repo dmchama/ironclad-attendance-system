@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,6 +12,7 @@ export interface User {
   emergencyContact: string;
   barcode?: string;
   username?: string;
+  password?: string;
   gymId?: string;
 }
 
