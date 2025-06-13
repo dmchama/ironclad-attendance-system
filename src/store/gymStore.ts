@@ -123,13 +123,24 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   fetchCurrentGym: async (gymId: string) => {
     try {
+      console.log('Fetching gym with ID:', gymId);
+      
       const { data, error } = await supabase
         .from('gyms')
         .select('*')
         .eq('id', gymId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.warn('No gym found with ID:', gymId);
+        set({ currentGym: null });
+        return;
+      }
 
       const gym: Gym = {
         id: data.id,
@@ -147,9 +158,11 @@ export const useGymStore = create<GymStore>((set, get) => ({
         adminEmail: data.admin_email || undefined
       };
 
+      console.log('Gym fetched successfully:', gym);
       set({ currentGym: gym });
     } catch (error) {
       console.error('Error fetching current gym:', error);
+      set({ currentGym: null });
     }
   },
 
@@ -233,6 +246,7 @@ export const useGymStore = create<GymStore>((set, get) => ({
         emergencyContact: member.emergency_contact || '',
         barcode: member.barcode || undefined,
         username: member.username || undefined,
+        password: undefined, // Don't expose password in the store
         gymId: member.gym_id
       })) || [];
 
@@ -525,20 +539,30 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   authenticateGymAdmin: async (username: string, password: string) => {
     try {
+      console.log('Authenticating gym admin:', username);
+      
       const { data, error } = await supabase
         .rpc('authenticate_gym_admin', {
           input_username: username,
           input_password: password
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Authentication error:', error);
+        throw error;
+      }
+
+      console.log('Authentication response:', data);
 
       if (data && data.length > 0 && data[0].is_authenticated) {
+        console.log('Authentication successful for gym:', data[0].gym_name);
         return {
           gymId: data[0].gym_id,
           gymName: data[0].gym_name
         };
       }
+      
+      console.log('Authentication failed - invalid credentials');
       return null;
     } catch (error) {
       console.error('Error authenticating gym admin:', error);
