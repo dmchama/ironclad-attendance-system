@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,7 @@ const GymProfile = () => {
   const [downloading, setDownloading] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Try to get gymId from URL or localStorage if currentGym is null
+  // Try to get gymId from localStorage if currentGym is null
   useEffect(() => {
     if (!currentGym) {
       const gymData = localStorage.getItem('gymAdmin');
@@ -21,6 +22,7 @@ const GymProfile = () => {
         try {
           const { gymId } = JSON.parse(gymData);
           if (gymId) {
+            console.log('GymProfile: Loading gym data for ID:', gymId);
             setLoading(true);
             fetchCurrentGym(gymId).finally(() => setLoading(false));
           }
@@ -248,93 +250,6 @@ const GymProfile = () => {
       </Card>
     </div>
   );
-};
-
-const generateQRCodeURL = (gymQrCode: string) => {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(gymQrCode)}`;
-};
-
-const copyQRCode = async (gymQrCode: string, toast: any, setCopying: (value: boolean) => void) => {
-  setCopying(true);
-  try {
-    await navigator.clipboard.writeText(gymQrCode);
-    toast({
-      title: "Copied!",
-      description: "Gym QR code copied to clipboard"
-    });
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to copy QR code",
-      variant: "destructive"
-    });
-  } finally {
-    setCopying(false);
-  }
-};
-
-const downloadQRCode = async (gymName: string, gymQrCode: string, toast: any, setDownloading: (value: boolean) => void) => {
-  setDownloading(true);
-  try {
-    const qrCodeUrl = generateQRCodeURL(gymQrCode);
-    const response = await fetch(qrCodeUrl);
-    const blob = await response.blob();
-    
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${gymName.replace(/\s+/g, '_')}_Gym_QR_Code.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Downloaded!",
-      description: "Gym QR code downloaded successfully"
-    });
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to download QR code",
-      variant: "destructive"
-    });
-  } finally {
-    setDownloading(false);
-  }
-};
-
-const shareQRCode = async (gymName: string, gymQrCode: string, toast: any) => {
-  try {
-    if (navigator.share) {
-      await navigator.share({
-        title: `${gymName} Gym QR Code`,
-        text: `Scan this QR code to check in at ${gymName}: ${gymQrCode}`,
-      });
-      
-      toast({
-        title: "Shared!",
-        description: "Gym QR code shared successfully"
-      });
-    } else {
-      await copyQRCode(gymQrCode, toast, () => {});
-    }
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to share QR code",
-      variant: "destructive"
-    });
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-100 text-green-800';
-    case 'inactive': return 'bg-gray-100 text-gray-800';
-    case 'suspended': return 'bg-red-100 text-red-800';
-    default: return 'bg-gray-100 text-gray-800';
-  }
 };
 
 export default GymProfile;

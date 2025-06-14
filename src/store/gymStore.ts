@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -125,6 +126,7 @@ export const useGymStore = create<GymStore>((set, get) => ({
     try {
       console.log('Fetching gym with ID:', gymId);
       
+      // First try to fetch by ID
       const { data, error } = await supabase
         .from('gyms')
         .select('*')
@@ -136,79 +138,79 @@ export const useGymStore = create<GymStore>((set, get) => ({
         throw error;
       }
 
-      if (!data) {
-        console.warn('No gym found with ID:', gymId);
-        
-        // Check if there's a gym with this username instead
-        const { data: gymByUsername, error: usernameError } = await supabase
-          .from('gyms')
-          .select('*')
-          .eq('username', gymId)
-          .maybeSingle();
-          
-        if (usernameError) {
-          console.error('Error searching by username:', usernameError);
-          set({ currentGym: null });
-          return;
-        }
-        
-        if (gymByUsername) {
-          console.log('Found gym by username:', gymByUsername);
-          const gym: Gym = {
-            id: gymByUsername.id,
-            name: gymByUsername.name,
-            email: gymByUsername.email,
-            phone: gymByUsername.phone || '',
-            address: gymByUsername.address || '',
-            gymQrCode: gymByUsername.gym_qr_code,
-            ownerId: gymByUsername.owner_id || undefined,
-            status: gymByUsername.status as 'active' | 'inactive' | 'suspended',
-            createdAt: gymByUsername.created_at,
-            updatedAt: gymByUsername.updated_at,
-            username: gymByUsername.username || undefined,
-            adminName: gymByUsername.admin_name || undefined,
-            adminEmail: gymByUsername.admin_email || undefined
-          };
-          
-          console.log('Gym fetched successfully by username:', gym);
-          set({ currentGym: gym });
-          
-          // Update localStorage with correct gym ID
-          const storedData = localStorage.getItem('gymAdmin');
-          if (storedData) {
-            try {
-              const parsed = JSON.parse(storedData);
-              parsed.gymId = gym.id;
-              localStorage.setItem('gymAdmin', JSON.stringify(parsed));
-            } catch (e) {
-              console.error('Error updating localStorage:', e);
-            }
-          }
-          return;
-        }
-        
-        set({ currentGym: null });
+      if (data) {
+        const gym: Gym = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          phone: data.phone || '',
+          address: data.address || '',
+          gymQrCode: data.gym_qr_code,
+          ownerId: data.owner_id || undefined,
+          status: data.status as 'active' | 'inactive' | 'suspended',
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+          username: data.username || undefined,
+          adminName: data.admin_name || undefined,
+          adminEmail: data.admin_email || undefined
+        };
+
+        console.log('Gym fetched successfully by ID:', gym);
+        set({ currentGym: gym });
         return;
       }
 
-      const gym: Gym = {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        phone: data.phone || '',
-        address: data.address || '',
-        gymQrCode: data.gym_qr_code,
-        ownerId: data.owner_id || undefined,
-        status: data.status as 'active' | 'inactive' | 'suspended',
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        username: data.username || undefined,
-        adminName: data.admin_name || undefined,
-        adminEmail: data.admin_email || undefined
-      };
-
-      console.log('Gym fetched successfully:', gym);
-      set({ currentGym: gym });
+      console.warn('No gym found with ID:', gymId);
+      
+      // If not found by ID, try by username (in case gymId is actually a username)
+      const { data: gymByUsername, error: usernameError } = await supabase
+        .from('gyms')
+        .select('*')
+        .eq('username', gymId)
+        .maybeSingle();
+        
+      if (usernameError) {
+        console.error('Error searching by username:', usernameError);
+        set({ currentGym: null });
+        return;
+      }
+      
+      if (gymByUsername) {
+        console.log('Found gym by username:', gymByUsername);
+        const gym: Gym = {
+          id: gymByUsername.id,
+          name: gymByUsername.name,
+          email: gymByUsername.email,
+          phone: gymByUsername.phone || '',
+          address: gymByUsername.address || '',
+          gymQrCode: gymByUsername.gym_qr_code,
+          ownerId: gymByUsername.owner_id || undefined,
+          status: gymByUsername.status as 'active' | 'inactive' | 'suspended',
+          createdAt: gymByUsername.created_at,
+          updatedAt: gymByUsername.updated_at,
+          username: gymByUsername.username || undefined,
+          adminName: gymByUsername.admin_name || undefined,
+          adminEmail: gymByUsername.admin_email || undefined
+        };
+        
+        console.log('Gym fetched successfully by username:', gym);
+        set({ currentGym: gym });
+        
+        // Update localStorage with correct gym ID
+        const storedData = localStorage.getItem('gymAdmin');
+        if (storedData) {
+          try {
+            const parsed = JSON.parse(storedData);
+            parsed.gymId = gym.id;
+            localStorage.setItem('gymAdmin', JSON.stringify(parsed));
+          } catch (e) {
+            console.error('Error updating localStorage:', e);
+          }
+        }
+        return;
+      }
+      
+      set({ currentGym: null });
     } catch (error) {
       console.error('Error fetching current gym:', error);
       set({ currentGym: null });
@@ -605,6 +607,38 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
       if (data && data.length > 0 && data[0].is_authenticated) {
         console.log('Authentication successful for gym:', data[0].gym_name);
+        
+        // Fetch the complete gym data immediately after authentication
+        const { data: gymData, error: gymError } = await supabase
+          .from('gyms')
+          .select('*')
+          .eq('id', data[0].gym_id)
+          .maybeSingle();
+
+        if (gymError) {
+          console.error('Error fetching gym data:', gymError);
+        } else if (gymData) {
+          // Set the current gym data in the store
+          const gym: Gym = {
+            id: gymData.id,
+            name: gymData.name,
+            email: gymData.email,
+            phone: gymData.phone || '',
+            address: gymData.address || '',
+            gymQrCode: gymData.gym_qr_code,
+            ownerId: gymData.owner_id || undefined,
+            status: gymData.status as 'active' | 'inactive' | 'suspended',
+            createdAt: gymData.created_at,
+            updatedAt: gymData.updated_at,
+            username: gymData.username || undefined,
+            adminName: gymData.admin_name || undefined,
+            adminEmail: gymData.admin_email || undefined
+          };
+          
+          console.log('Setting current gym in store:', gym);
+          set({ currentGym: gym });
+        }
+        
         return {
           gymId: data[0].gym_id,
           gymName: data[0].gym_name
