@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Loader2, User, Key } from 'lucide-react';
+import { Building2, ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useGymStore } from '@/store/gymStore';
 
 interface GymAdminAuthProps {
   onAuthSuccess: (gymId: string, gymName: string) => void;
@@ -14,20 +14,19 @@ interface GymAdminAuthProps {
 }
 
 const GymAdminAuth = ({ onAuthSuccess, onBack }: GymAdminAuthProps) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  });
   const { toast } = useToast();
+  const { authenticateGymAdmin } = useGymStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.username || !formData.password) {
+    if (!username.trim() || !password.trim()) {
       toast({
         title: "Error",
-        description: "Username and password are required",
+        description: "Please enter both username and password",
         variant: "destructive"
       });
       return;
@@ -35,31 +34,39 @@ const GymAdminAuth = ({ onAuthSuccess, onBack }: GymAdminAuthProps) => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .rpc('authenticate_gym_admin', {
-          input_username: formData.username,
-          input_password: formData.password
-        });
-
-      if (error) throw error;
-
-      if (data && data.length > 0 && data[0].is_authenticated) {
+      console.log('Attempting gym admin authentication for:', username);
+      
+      const result = await authenticateGymAdmin(username.trim(), password);
+      
+      if (result) {
+        console.log('Gym admin authentication successful:', result);
+        
+        // Store gym admin data in localStorage for persistence
+        localStorage.setItem('gymAdmin', JSON.stringify({
+          gymId: result.gymId,
+          gymName: result.gymName,
+          loginTime: new Date().toISOString()
+        }));
+        
         toast({
           title: "Success",
-          description: `Welcome to ${data[0].gym_name}!`
+          description: `Welcome to ${result.gymName}!`
         });
-        onAuthSuccess(data[0].gym_id, data[0].gym_name);
+        
+        onAuthSuccess(result.gymId, result.gymName);
       } else {
+        console.log('Gym admin authentication failed - invalid credentials');
         toast({
           title: "Authentication Failed",
           description: "Invalid username or password",
           variant: "destructive"
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Gym admin authentication error:', error);
       toast({
         title: "Error",
-        description: error.message || "Authentication failed",
+        description: "An error occurred during authentication. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -71,64 +78,60 @@ const GymAdminAuth = ({ onAuthSuccess, onBack }: GymAdminAuthProps) => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Building2 className="w-8 h-8 text-white" />
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
           </div>
-          <CardTitle className="text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Gym Admin Login
-          </CardTitle>
-          <p className="text-gray-600">
-            Enter your credentials to manage your gym
-          </p>
+          <CardTitle className="text-2xl">Gym Admin Login</CardTitle>
+          <p className="text-gray-600">Sign in to manage your gym</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="username" className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Username
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
                 type="text"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
+                disabled={loading}
                 required
-                className="mt-1"
               />
             </div>
-            <div>
-              <Label htmlFor="password" className="flex items-center gap-2">
-                <Key className="w-4 h-4" />
-                Password
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                disabled={loading}
                 required
-                className="mt-1"
               />
             </div>
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              disabled={loading}
-            >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </Button>
           </form>
-          <div className="mt-4 text-center">
+          <div className="mt-4">
             <Button
-              variant="link"
+              variant="ghost"
               onClick={onBack}
-              className="text-sm"
+              className="w-full"
+              disabled={loading}
             >
-              ← Back to login options
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Login Options
             </Button>
           </div>
         </CardContent>

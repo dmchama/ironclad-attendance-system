@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Users, Calendar, DollarSign, LogOut, QrCode, TrendingUp, Clock } from 'lucide-react';
+import { Building2, Users, Calendar, DollarSign, LogOut, QrCode, TrendingUp, Clock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useGymStore } from '@/store/gymStore';
 import UserManagement from './UserManagement';
@@ -30,32 +30,70 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
     fetchPayments,
     fetchCurrentGym 
   } = useGymStore();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
     loadData();
   }, [gymId]);
 
   const loadData = async () => {
+    if (!gymId) {
+      console.error('No gymId provided to GymAdminDashboard');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log('Loading data for gym:', gymId);
+      
+      // Ensure we have the current gym data first
+      if (!currentGym || currentGym.id !== gymId) {
+        console.log('Fetching current gym data...');
+        await fetchCurrentGym(gymId);
+      }
+      
+      // Load all other data in parallel
       await Promise.all([
-        fetchCurrentGym(gymId),
         fetchUsers(gymId),
         fetchAttendance(gymId),
         fetchPayments(gymId)
       ]);
+      
+      setDataLoaded(true);
+      console.log('All data loaded successfully');
     } catch (error: any) {
       console.error('Error loading gym data:', error);
       toast({
         title: "Error",
-        description: "Failed to load data",
+        description: "Failed to load gym data. Please try refreshing the page.",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
+
+  const handleLogout = () => {
+    // Clear localStorage
+    localStorage.removeItem('gymAdmin');
+    onLogout();
+  };
+
+  // Show loading state while data is being fetched
+  if (loading && !dataLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <Card>
+          <CardContent className="text-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Loading gym dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Calculate dashboard stats
   const totalMembers = users.length;
@@ -76,11 +114,11 @@ const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps)
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">{gymName}</h1>
+              <h1 className="text-3xl font-bold">{currentGym?.name || gymName}</h1>
               <p className="text-gray-600">Gym Admin Dashboard</p>
             </div>
           </div>
-          <Button onClick={onLogout} variant="outline">
+          <Button onClick={handleLogout} variant="outline">
             <LogOut className="w-4 h-4 mr-2" />
             Logout
           </Button>

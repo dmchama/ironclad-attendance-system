@@ -138,6 +138,55 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
       if (!data) {
         console.warn('No gym found with ID:', gymId);
+        
+        // Check if there's a gym with this username instead
+        const { data: gymByUsername, error: usernameError } = await supabase
+          .from('gyms')
+          .select('*')
+          .eq('username', gymId)
+          .maybeSingle();
+          
+        if (usernameError) {
+          console.error('Error searching by username:', usernameError);
+          set({ currentGym: null });
+          return;
+        }
+        
+        if (gymByUsername) {
+          console.log('Found gym by username:', gymByUsername);
+          const gym: Gym = {
+            id: gymByUsername.id,
+            name: gymByUsername.name,
+            email: gymByUsername.email,
+            phone: gymByUsername.phone || '',
+            address: gymByUsername.address || '',
+            gymQrCode: gymByUsername.gym_qr_code,
+            ownerId: gymByUsername.owner_id || undefined,
+            status: gymByUsername.status as 'active' | 'inactive' | 'suspended',
+            createdAt: gymByUsername.created_at,
+            updatedAt: gymByUsername.updated_at,
+            username: gymByUsername.username || undefined,
+            adminName: gymByUsername.admin_name || undefined,
+            adminEmail: gymByUsername.admin_email || undefined
+          };
+          
+          console.log('Gym fetched successfully by username:', gym);
+          set({ currentGym: gym });
+          
+          // Update localStorage with correct gym ID
+          const storedData = localStorage.getItem('gymAdmin');
+          if (storedData) {
+            try {
+              const parsed = JSON.parse(storedData);
+              parsed.gymId = gym.id;
+              localStorage.setItem('gymAdmin', JSON.stringify(parsed));
+            } catch (e) {
+              console.error('Error updating localStorage:', e);
+            }
+          }
+          return;
+        }
+        
         set({ currentGym: null });
         return;
       }
