@@ -4,11 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Calendar, DollarSign, TrendingUp, UserPlus, Clock } from "lucide-react";
 import { useGymStore } from "@/store/gymStore";
 
-interface DashboardProps {
-  setActiveTab: (tab: string) => void;
-}
-
-const Dashboard = ({ setActiveTab }: DashboardProps) => {
+const Dashboard = () => {
   const { users, attendance, payments } = useGymStore();
   
   const totalMembers = users.length;
@@ -26,29 +22,25 @@ const Dashboard = ({ setActiveTab }: DashboardProps) => {
       title: "Total Members",
       value: totalMembers,
       icon: Users,
-      color: "from-blue-500 to-blue-600",
-      onClick: () => setActiveTab("users")
+      color: "from-blue-500 to-blue-600"
     },
     {
       title: "Active Members",
       value: activeMembers,
       icon: TrendingUp,
-      color: "from-green-500 to-green-600",
-      onClick: () => setActiveTab("users")
+      color: "from-green-500 to-green-600"
     },
     {
       title: "Today's Attendance",
       value: todayAttendance,
       icon: Calendar,
-      color: "from-purple-500 to-purple-600",
-      onClick: () => setActiveTab("attendance")
+      color: "from-purple-500 to-purple-600"
     },
     {
       title: "Pending Payments",
       value: pendingPayments,
       icon: DollarSign,
-      color: "from-orange-500 to-orange-600",
-      onClick: () => setActiveTab("payments")
+      color: "from-orange-500 to-orange-600"
     }
   ];
 
@@ -57,22 +49,19 @@ const Dashboard = ({ setActiveTab }: DashboardProps) => {
       title: "Add New Member",
       description: "Register a new gym member",
       icon: UserPlus,
-      color: "from-blue-500 to-blue-600",
-      onClick: () => setActiveTab("users")
+      color: "from-blue-500 to-blue-600"
     },
     {
       title: "Mark Attendance",
       description: "Check-in members for today",
       icon: Clock,
-      color: "from-green-500 to-green-600",
-      onClick: () => setActiveTab("attendance")
+      color: "from-green-500 to-green-600"
     },
     {
       title: "Process Payment",
       description: "Record monthly payments",
       icon: DollarSign,
-      color: "from-purple-500 to-purple-600",
-      onClick: () => setActiveTab("payments")
+      color: "from-purple-500 to-purple-600"
     }
   ];
 
@@ -83,11 +72,7 @@ const Dashboard = ({ setActiveTab }: DashboardProps) => {
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card 
-              key={index} 
-              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
-              onClick={stat.onClick}
-            >
+            <Card key={index} className="hover:shadow-lg transition-all duration-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -129,11 +114,7 @@ const Dashboard = ({ setActiveTab }: DashboardProps) => {
           {quickActions.map((action, index) => {
             const Icon = action.icon;
             return (
-              <Card 
-                key={index}
-                className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
-                onClick={action.onClick}
-              >
+              <Card key={index} className="hover:shadow-lg transition-all duration-200">
                 <CardHeader>
                   <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${action.color} flex items-center justify-center mb-4`}>
                     <Icon className="h-6 w-6 text-white" />
