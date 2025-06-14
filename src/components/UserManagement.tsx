@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useGymStore, User } from '@/store/gymStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,10 +59,11 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     
     console.log('Form submission started with data:', formData);
     
-    if (!formData.name || !formData.email || !formData.phone) {
+    // Validate required fields
+    if (!formData.name || !formData.email || !formData.phone || !formData.username || !formData.password) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields (Name, Email, Phone)",
+        description: "Please fill in all required fields (Name, Email, Phone, Username, Password)",
         variant: "destructive"
       });
       return;
@@ -81,14 +83,16 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     // Calculate membership dates if a plan is selected
     let membershipStartDate;
     let membershipEndDate;
+    let finalMembershipPlanId = null;
     
-    if (formData.membershipPlanId) {
+    if (formData.membershipPlanId && formData.membershipPlanId !== '') {
       const selectedPlan = membershipPlans.find(plan => plan.id === formData.membershipPlanId);
       if (selectedPlan) {
         membershipStartDate = new Date().toISOString().split('T')[0];
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + selectedPlan.durationDays);
         membershipEndDate = endDate.toISOString().split('T')[0];
+        finalMembershipPlanId = formData.membershipPlanId;
       }
     }
 
@@ -100,7 +104,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
           ...formData,
           joinDate: editingUser.joinDate,
           membershipStartDate,
-          membershipEndDate
+          membershipEndDate,
+          membershipPlanId: finalMembershipPlanId
         });
         toast({
           title: "Success",
@@ -111,7 +116,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
           ...formData,
           joinDate: new Date().toISOString().split('T')[0],
           membershipStartDate,
-          membershipEndDate
+          membershipEndDate,
+          membershipPlanId: finalMembershipPlanId
         }, gymId);
         toast({
           title: "Success",
@@ -307,10 +313,9 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a plan" />
+                      <SelectValue placeholder="Select a plan (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="no_plan">No plan</SelectItem>
                       {membershipPlans
                         .filter(plan => plan.isActive)
                         .map((plan) => (
@@ -353,23 +358,25 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                 </div>
 
                 <div>
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="username">Username *</Label>
                   <Input
                     id="username"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     placeholder="Member login username"
+                    required
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Password *</Label>
                   <Input
                     id="password"
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder={editingUser ? "Leave blank to keep current password" : "Member login password"}
+                    required={!editingUser}
                   />
                 </div>
               </div>
