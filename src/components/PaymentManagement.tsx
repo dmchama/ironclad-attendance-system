@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,10 +13,17 @@ interface PaymentManagementProps {
 }
 
 const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
-  const { users, payments, addPayment, updatePayment } = useGymStore();
+  const { users, payments, addPayment, updatePayment, membershipPlans, fetchMembershipPlans } = useGymStore();
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState("");
+  const [customAmount, setCustomAmount] = useState("");
+
+  useEffect(() => {
+    if (gymId) {
+      fetchMembershipPlans(gymId);
+    }
+  }, [gymId, fetchMembershipPlans]);
 
   const membershipPrices = {
     basic: 49.99,
@@ -38,7 +44,27 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
     const user = users.find(u => u.id === selectedUser);
     if (!user) return;
 
-    const amount = paymentAmount ? parseFloat(paymentAmount) : membershipPrices[user.membershipType];
+    let amount = 0;
+    let membershipType = user.membershipType;
+    let membershipPlanId = undefined;
+
+    if (selectedPlan) {
+      const plan = membershipPlans.find(p => p.id === selectedPlan);
+      if (plan) {
+        amount = plan.price;
+        membershipType = plan.planType;
+        membershipPlanId = plan.id;
+      }
+    } else if (customAmount) {
+      amount = parseFloat(customAmount);
+    } else {
+      toast({
+        title: "Error",
+        description: "Please select a plan or enter a custom amount",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Calculate next due date (next month)
     const nextDueDate = new Date();
@@ -51,8 +77,9 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
         amount,
         dueDate: nextDueDate.toISOString().split('T')[0],
         status: 'pending',
-        membershipType: user.membershipType,
-        gymId
+        membershipType,
+        gymId,
+        membershipPlanId
       });
 
       toast({
@@ -61,7 +88,8 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
       });
 
       setSelectedUser("");
-      setPaymentAmount("");
+      setSelectedPlan("");
+      setCustomAmount("");
     } catch (error) {
       toast({
         title: "Error",
@@ -186,7 +214,7 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
               <label className="text-sm font-medium mb-2 block">Select Member</label>
               <Select value={selectedUser} onValueChange={setSelectedUser}>
@@ -198,20 +226,39 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
                     .filter(user => user.status === 'active')
                     .map((user) => (
                       <SelectItem key={user.id} value={user.id}>
-                        {user.name} - {user.membershipType} (${membershipPrices[user.membershipType]})
+                        {user.name}
                       </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Amount (Optional)</label>
+              <label className="text-sm font-medium mb-2 block">Membership Plan</label>
+              <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No plan</SelectItem>
+                  {membershipPlans
+                    .filter(plan => plan.isActive)
+                    .map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.planName} - ${plan.price}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Custom Amount</label>
               <Input
                 type="number"
                 step="0.01"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                placeholder="Leave blank for membership price"
+                value={customAmount}
+                onChange={(e) => setCustomAmount(e.target.value)}
+                placeholder="Or enter custom amount"
+                disabled={!!selectedPlan}
               />
             </div>
             <Button 

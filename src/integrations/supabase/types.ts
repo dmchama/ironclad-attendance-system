@@ -117,6 +117,9 @@ export type Database = {
           gym_id: string | null
           id: string
           join_date: string
+          membership_end_date: string | null
+          membership_plan_id: string | null
+          membership_start_date: string | null
           membership_type: string
           name: string
           password_hash: string | null
@@ -133,6 +136,9 @@ export type Database = {
           gym_id?: string | null
           id?: string
           join_date?: string
+          membership_end_date?: string | null
+          membership_plan_id?: string | null
+          membership_start_date?: string | null
           membership_type: string
           name: string
           password_hash?: string | null
@@ -149,6 +155,9 @@ export type Database = {
           gym_id?: string | null
           id?: string
           join_date?: string
+          membership_end_date?: string | null
+          membership_plan_id?: string | null
+          membership_start_date?: string | null
           membership_type?: string
           name?: string
           password_hash?: string | null
@@ -165,6 +174,57 @@ export type Database = {
             referencedRelation: "gyms"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "members_membership_plan_id_fkey"
+            columns: ["membership_plan_id"]
+            isOneToOne: false
+            referencedRelation: "membership_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_plans: {
+        Row: {
+          created_at: string
+          duration_days: number
+          gym_id: string
+          id: string
+          is_active: boolean | null
+          plan_name: string
+          plan_type: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_days: number
+          gym_id: string
+          id?: string
+          is_active?: boolean | null
+          plan_name: string
+          plan_type: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_days?: number
+          gym_id?: string
+          id?: string
+          is_active?: boolean | null
+          plan_name?: string
+          plan_type?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_plans_gym_id_fkey"
+            columns: ["gym_id"]
+            isOneToOne: false
+            referencedRelation: "gyms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       payments: {
@@ -175,6 +235,7 @@ export type Database = {
           gym_id: string | null
           id: string
           member_id: string
+          membership_plan_id: string | null
           membership_type: string
           paid_date: string | null
           status: string
@@ -187,6 +248,7 @@ export type Database = {
           gym_id?: string | null
           id?: string
           member_id: string
+          membership_plan_id?: string | null
           membership_type: string
           paid_date?: string | null
           status?: string
@@ -199,6 +261,7 @@ export type Database = {
           gym_id?: string | null
           id?: string
           member_id?: string
+          membership_plan_id?: string | null
           membership_type?: string
           paid_date?: string | null
           status?: string
@@ -217,6 +280,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_membership_plan_id_fkey"
+            columns: ["membership_plan_id"]
+            isOneToOne: false
+            referencedRelation: "membership_plans"
             referencedColumns: ["id"]
           },
         ]

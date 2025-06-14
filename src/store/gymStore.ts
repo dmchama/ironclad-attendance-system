@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,6 +14,9 @@ export interface User {
   username?: string;
   password?: string;
   gymId?: string;
+  membershipPlanId?: string;
+  membershipStartDate?: string;
+  membershipEndDate?: string;
 }
 
 export interface Gym {
@@ -54,6 +56,19 @@ export interface Payment {
   status: 'pending' | 'paid' | 'overdue';
   membershipType: string;
   gymId?: string;
+  membershipPlanId?: string;
+}
+
+export interface MembershipPlan {
+  id: string;
+  gymId: string;
+  planName: string;
+  planType: 'daily' | 'monthly' | '3_month' | '6_month' | 'yearly';
+  price: number;
+  durationDays: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface GymStore {
@@ -62,6 +77,7 @@ interface GymStore {
   payments: Payment[];
   gyms: Gym[];
   currentGym: Gym | null;
+  membershipPlans: MembershipPlan[];
   loading: boolean;
   fetchGyms: () => Promise<void>;
   fetchCurrentGym: (gymId: string) => Promise<void>;
@@ -70,6 +86,8 @@ interface GymStore {
   fetchUsers: (gymId: string) => Promise<void>;
   fetchAttendance: (gymId: string) => Promise<void>;
   fetchPayments: (gymId: string) => Promise<void>;
+  fetchMembershipPlans: (gymId: string) => Promise<void>;
+  updateMembershipPlan: (id: string, plan: Partial<MembershipPlan>) => Promise<void>;
   addUser: (user: Omit<User, 'id'>, gymId: string) => Promise<void>;
   updateUser: (id: string, user: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
@@ -89,6 +107,7 @@ export const useGymStore = create<GymStore>((set, get) => ({
   payments: [],
   gyms: [],
   currentGym: null,
+  membershipPlans: [],
   loading: false,
 
   fetchGyms: async () => {
@@ -275,12 +294,74 @@ export const useGymStore = create<GymStore>((set, get) => ({
     }
   },
 
+  fetchMembershipPlans: async (gymId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('*')
+        .eq('gym_id', gymId)
+        .order('duration_days', { ascending: true });
+
+      if (error) throw error;
+
+      const membershipPlans: MembershipPlan[] = data?.map(plan => ({
+        id: plan.id,
+        gymId: plan.gym_id,
+        planName: plan.plan_name,
+        planType: plan.plan_type as 'daily' | 'monthly' | '3_month' | '6_month' | 'yearly',
+        price: parseFloat(plan.price),
+        durationDays: plan.duration_days,
+        isActive: plan.is_active,
+        createdAt: plan.created_at,
+        updatedAt: plan.updated_at
+      })) || [];
+
+      set({ membershipPlans });
+    } catch (error) {
+      console.error('Error fetching membership plans:', error);
+    }
+  },
+
+  updateMembershipPlan: async (id: string, updatedPlan: Partial<MembershipPlan>) => {
+    try {
+      const updateData: any = {};
+      
+      if (updatedPlan.planName) updateData.plan_name = updatedPlan.planName;
+      if (updatedPlan.price !== undefined) updateData.price = updatedPlan.price;
+      if (updatedPlan.isActive !== undefined) updateData.is_active = updatedPlan.isActive;
+
+      const { error } = await supabase
+        .from('membership_plans')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Refresh membership plans for the current gym
+      const { currentGym } = get();
+      if (currentGym) {
+        await get().fetchMembershipPlans(currentGym.id);
+      }
+    } catch (error) {
+      console.error('Error updating membership plan:', error);
+      throw error;
+    }
+  },
+
   fetchUsers: async (gymId: string) => {
     set({ loading: true });
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('*')
+        .select(`
+          *,
+          membership_plans (
+            id,
+            plan_name,
+            plan_type,
+            price
+          )
+        `)
         .eq('gym_id', gymId)
         .order('created_at', { ascending: false });
 
@@ -298,7 +379,10 @@ export const useGymStore = create<GymStore>((set, get) => ({
         barcode: member.barcode || undefined,
         username: member.username || undefined,
         password: undefined, // Don't expose password in the store
-        gymId: member.gym_id
+        gymId: member.gym_id,
+        membershipPlanId: member.membership_plan_id,
+        membershipStartDate: member.membership_start_date,
+        membershipEndDate: member.membership_end_date
       })) || [];
 
       set({ users });
@@ -345,7 +429,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
         .from('payments')
         .select(`
           *,
-          members (name)
+          members (name),
+          membership_plans (plan_name, plan_type)
         `)
         .eq('gym_id', gymId)
         .order('created_at', { ascending: false });
@@ -361,7 +446,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
         paidDate: payment.paid_date || undefined,
         status: payment.status as 'pending' | 'paid' | 'overdue',
         membershipType: payment.membership_type,
-        gymId: payment.gym_id
+        gymId: payment.gym_id,
+        membershipPlanId: payment.membership_plan_id
       })) || [];
 
       set({ payments });
@@ -391,7 +477,10 @@ export const useGymStore = create<GymStore>((set, get) => ({
           barcode: user.barcode,
           username: user.username,
           password_hash: hashedPassword,
-          gym_id: gymId
+          gym_id: gymId,
+          membership_plan_id: user.membershipPlanId,
+          membership_start_date: user.membershipStartDate,
+          membership_end_date: user.membershipEndDate
         });
 
       if (error) throw error;
@@ -415,6 +504,9 @@ export const useGymStore = create<GymStore>((set, get) => ({
       if (updatedUser.emergencyContact !== undefined) updateData.emergency_contact = updatedUser.emergencyContact;
       if (updatedUser.barcode !== undefined) updateData.barcode = updatedUser.barcode;
       if (updatedUser.username) updateData.username = updatedUser.username;
+      if (updatedUser.membershipPlanId) updateData.membership_plan_id = updatedUser.membershipPlanId;
+      if (updatedUser.membershipStartDate) updateData.membership_start_date = updatedUser.membershipStartDate;
+      if (updatedUser.membershipEndDate) updateData.membership_end_date = updatedUser.membershipEndDate;
       
       // Only update password if a new one is provided
       if (updatedUser.password && updatedUser.password.trim() !== '') {
@@ -523,7 +615,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
           paid_date: payment.paidDate || null,
           status: payment.status,
           membership_type: payment.membershipType,
-          gym_id: payment.gymId
+          gym_id: payment.gymId,
+          membership_plan_id: payment.membershipPlanId
         });
 
       if (error) throw error;

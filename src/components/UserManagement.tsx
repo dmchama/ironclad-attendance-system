@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGymStore, User } from '@/store/gymStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,7 @@ interface UserManagementProps {
 }
 
 const UserManagement = ({ gymId }: UserManagementProps) => {
-  const { users, addUser, updateUser, deleteUser, generateBarcode, loading } = useGymStore();
+  const { users, addUser, updateUser, deleteUser, generateBarcode, loading, membershipPlans, fetchMembershipPlans } = useGymStore();
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -28,8 +27,15 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     status: 'active' as 'active' | 'inactive' | 'suspended',
     emergencyContact: '',
     username: '',
-    password: ''
+    password: '',
+    membershipPlanId: ''
   });
+
+  useEffect(() => {
+    if (gymId) {
+      fetchMembershipPlans(gymId);
+    }
+  }, [gymId, fetchMembershipPlans]);
 
   const resetForm = () => {
     setFormData({
@@ -40,7 +46,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       status: 'active',
       emergencyContact: '',
       username: '',
-      password: ''
+      password: '',
+      membershipPlanId: ''
     });
     setShowAddForm(false);
     setEditingUser(null);
@@ -58,11 +65,27 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       return;
     }
 
+    // Calculate membership dates if a plan is selected
+    let membershipStartDate;
+    let membershipEndDate;
+    
+    if (formData.membershipPlanId) {
+      const selectedPlan = membershipPlans.find(plan => plan.id === formData.membershipPlanId);
+      if (selectedPlan) {
+        membershipStartDate = new Date().toISOString().split('T')[0];
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + selectedPlan.durationDays);
+        membershipEndDate = endDate.toISOString().split('T')[0];
+      }
+    }
+
     try {
       if (editingUser) {
         await updateUser(editingUser.id, {
           ...formData,
-          joinDate: editingUser.joinDate
+          joinDate: editingUser.joinDate,
+          membershipStartDate,
+          membershipEndDate
         });
         toast({
           title: "Success",
@@ -71,7 +94,9 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       } else {
         await addUser({
           ...formData,
-          joinDate: new Date().toISOString().split('T')[0]
+          joinDate: new Date().toISOString().split('T')[0],
+          membershipStartDate,
+          membershipEndDate
         }, gymId);
         toast({
           title: "Success",
@@ -98,7 +123,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       status: user.status,
       emergencyContact: user.emergencyContact || '',
       username: user.username || '',
-      password: ''
+      password: '',
+      membershipPlanId: user.membershipPlanId || ''
     });
     setShowAddForm(true);
   };
@@ -150,6 +176,12 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       case 'suspended': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getPlanName = (planId?: string) => {
+    if (!planId) return 'No plan assigned';
+    const plan = membershipPlans.find(p => p.id === planId);
+    return plan ? plan.planName : 'Unknown plan';
   };
 
   if (loading) {
@@ -213,20 +245,25 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="membershipType">Membership Type</Label>
+                  <Label htmlFor="membershipPlanId">Membership Plan</Label>
                   <Select 
-                    value={formData.membershipType} 
-                    onValueChange={(value: 'basic' | 'premium' | 'vip') => 
-                      setFormData({ ...formData, membershipType: value })
+                    value={formData.membershipPlanId} 
+                    onValueChange={(value) => 
+                      setFormData({ ...formData, membershipPlanId: value })
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select a plan" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="basic">Basic</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                      <SelectItem value="vip">VIP</SelectItem>
+                      <SelectItem value="">No plan</SelectItem>
+                      {membershipPlans
+                        .filter(plan => plan.isActive)
+                        .map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            {plan.planName} - ${plan.price}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -345,6 +382,14 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                 <Badge className={getStatusColor(user.status)}>
                   {user.status}
                 </Badge>
+              </div>
+              <div className="bg-green-50 p-2 rounded text-sm">
+                <strong>Plan:</strong> {getPlanName(user.membershipPlanId)}
+                {user.membershipEndDate && (
+                  <div className="text-xs text-gray-600 mt-1">
+                    Expires: {new Date(user.membershipEndDate).toLocaleDateString()}
+                  </div>
+                )}
               </div>
               {user.username && (
                 <div className="bg-blue-50 p-2 rounded text-sm">
