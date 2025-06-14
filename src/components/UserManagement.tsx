@@ -56,10 +56,23 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form submission started with data:', formData);
+    
     if (!formData.name || !formData.email || !formData.phone) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields (Name, Email, Phone)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
         variant: "destructive"
       });
       return;
@@ -80,6 +93,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     }
 
     try {
+      console.log('Attempting to save member...');
+      
       if (editingUser) {
         await updateUser(editingUser.id, {
           ...formData,
@@ -103,8 +118,11 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
           description: "Member added successfully"
         });
       }
+      
+      console.log('Member saved successfully');
       resetForm();
     } catch (error: any) {
+      console.error('Error saving member:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to save member",
@@ -197,7 +215,10 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Member Management</h2>
         <Button 
-          onClick={() => setShowAddForm(true)}
+          onClick={() => {
+            console.log('Add Member button clicked');
+            setShowAddForm(true);
+          }}
           className="bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -218,8 +239,12 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => {
+                      console.log('Name changed:', e.target.value);
+                      setFormData({ ...formData, name: e.target.value });
+                    }}
                     required
+                    placeholder="Enter member's full name"
                   />
                 </div>
                 
@@ -229,8 +254,12 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => {
+                      console.log('Email changed:', e.target.value);
+                      setFormData({ ...formData, email: e.target.value });
+                    }}
                     required
+                    placeholder="Enter email address"
                   />
                 </div>
                 
@@ -239,24 +268,49 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      console.log('Phone changed:', e.target.value);
+                      setFormData({ ...formData, phone: e.target.value });
+                    }}
                     required
+                    placeholder="Enter phone number"
                   />
+                </div>
+                
+                <div>
+                  <Label htmlFor="membershipType">Membership Type</Label>
+                  <Select 
+                    value={formData.membershipType} 
+                    onValueChange={(value: 'basic' | 'premium' | 'vip') => {
+                      console.log('Membership type changed:', value);
+                      setFormData({ ...formData, membershipType: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic">Basic</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
+                      <SelectItem value="vip">VIP</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div>
                   <Label htmlFor="membershipPlanId">Membership Plan</Label>
                   <Select 
                     value={formData.membershipPlanId} 
-                    onValueChange={(value) => 
-                      setFormData({ ...formData, membershipPlanId: value })
-                    }
+                    onValueChange={(value) => {
+                      console.log('Membership plan changed:', value);
+                      setFormData({ ...formData, membershipPlanId: value });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a plan" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No plan</SelectItem>
+                      <SelectItem value="no_plan">No plan</SelectItem>
                       {membershipPlans
                         .filter(plan => plan.isActive)
                         .map((plan) => (
@@ -272,9 +326,10 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                   <Label htmlFor="status">Status</Label>
                   <Select 
                     value={formData.status} 
-                    onValueChange={(value: 'active' | 'inactive' | 'suspended') => 
-                      setFormData({ ...formData, status: value })
-                    }
+                    onValueChange={(value: 'active' | 'inactive' | 'suspended') => {
+                      console.log('Status changed:', value);
+                      setFormData({ ...formData, status: value });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -293,6 +348,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                     id="emergencyContact"
                     value={formData.emergencyContact}
                     onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                    placeholder="Emergency contact number"
                   />
                 </div>
 
@@ -319,8 +375,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
               </div>
               
               <div className="flex gap-2">
-                <Button type="submit">
-                  {editingUser ? 'Update Member' : 'Add Member'}
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Saving...' : (editingUser ? 'Update Member' : 'Add Member')}
                 </Button>
                 <Button type="button" variant="outline" onClick={resetForm}>
                   Cancel
