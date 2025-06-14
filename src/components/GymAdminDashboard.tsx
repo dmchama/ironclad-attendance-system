@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Building2, Users, UserCheck, DollarSign, LogOut, CreditCard } from 'lucide-react';
 import { useGymStore } from '@/store/gymStore';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Dashboard from './Dashboard';
@@ -11,9 +11,15 @@ import AttendanceManagement from './AttendanceManagement';
 import PaymentManagement from './PaymentManagement';
 import MembershipPlans from './MembershipPlans';
 
-const GymAdminDashboard = () => {
+interface GymAdminDashboardProps {
+  gymId?: string;
+  gymName?: string;
+  onLogout?: () => void;
+}
+
+const GymAdminDashboard = ({ onLogout }: GymAdminDashboardProps) => {
   const { currentGym } = useGymStore();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [gymData, setGymData] = useState<{ gymId: string; gymName: string } | null>(null);
 
@@ -26,16 +32,20 @@ const GymAdminDashboard = () => {
       } catch (error) {
         console.error('Error parsing gym data from localStorage:', error);
         localStorage.removeItem('gymAdmin');
-        router.push('/login');
+        navigate('/');
       }
     } else {
-      router.push('/login');
+      navigate('/');
     }
-  }, [router]);
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('gymAdmin');
-    router.push('/login');
+    if (onLogout) {
+      onLogout();
+    } else {
+      navigate('/');
+    }
   };
 
   const menuItems = [
@@ -52,7 +62,7 @@ const GymAdminDashboard = () => {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard gymId={gymData.gymId} />;
+        return <Dashboard />;
       case 'profile':
         return <GymProfile />;
       case 'members':
@@ -64,7 +74,7 @@ const GymAdminDashboard = () => {
       case 'payments':
         return <PaymentManagement gymId={gymData.gymId} />;
       default:
-        return <Dashboard gymId={gymData.gymId} />;
+        return <Dashboard />;
     }
   };
 

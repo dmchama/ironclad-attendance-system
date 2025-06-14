@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,7 @@ interface MembershipPlansProps {
 const MembershipPlans = ({ gymId }: MembershipPlansProps) => {
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [editingPlan, setEditingPlan] = useState<string | null>(null);
-  const [editPrice, setEditPrice] = useState<number>(0);
+  const [editPrice, setEditPrice] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -79,20 +78,30 @@ const MembershipPlans = ({ gymId }: MembershipPlansProps) => {
 
   const handleEditPrice = (planId: string, currentPrice: number) => {
     setEditingPlan(planId);
-    setEditPrice(currentPrice);
+    setEditPrice(currentPrice.toString());
   };
 
   const handleSavePrice = async (planId: string) => {
     try {
+      const priceValue = parseFloat(editPrice);
+      if (isNaN(priceValue) || priceValue < 0) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid price",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('membership_plans')
-        .update({ price: editPrice })
+        .update({ price: priceValue })
         .eq('id', planId);
 
       if (error) throw error;
 
       setPlans(plans.map(plan => 
-        plan.id === planId ? { ...plan, price: editPrice } : plan
+        plan.id === planId ? { ...plan, price: priceValue } : plan
       ));
 
       setEditingPlan(null);
@@ -111,7 +120,7 @@ const MembershipPlans = ({ gymId }: MembershipPlansProps) => {
 
   const handleCancelEdit = () => {
     setEditingPlan(null);
-    setEditPrice(0);
+    setEditPrice('');
   };
 
   const togglePlanStatus = async (planId: string, currentStatus: boolean) => {
@@ -180,7 +189,7 @@ const MembershipPlans = ({ gymId }: MembershipPlansProps) => {
                         type="number"
                         step="0.01"
                         value={editPrice}
-                        onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => setEditPrice(e.target.value)}
                         className="text-center"
                       />
                     </div>

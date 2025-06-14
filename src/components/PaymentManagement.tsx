@@ -25,12 +25,6 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
     }
   }, [gymId, fetchMembershipPlans]);
 
-  const membershipPrices = {
-    basic: 49.99,
-    premium: 79.99,
-    vip: 99.99
-  };
-
   const handleAddPayment = async () => {
     if (!selectedUser) {
       toast({
@@ -52,7 +46,22 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
       const plan = membershipPlans.find(p => p.id === selectedPlan);
       if (plan) {
         amount = plan.price;
-        membershipType = plan.planType;
+        // Map plan types to membership types
+        switch (plan.planType) {
+          case 'daily':
+            membershipType = 'basic';
+            break;
+          case 'monthly':
+            membershipType = 'premium';
+            break;
+          case '3_month':
+          case '6_month':
+          case 'yearly':
+            membershipType = 'vip';
+            break;
+          default:
+            membershipType = 'basic';
+        }
         membershipPlanId = plan.id;
       }
     } else if (customAmount) {
@@ -66,9 +75,18 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
       return;
     }
     
-    // Calculate next due date (next month)
+    // Calculate next due date based on plan type
     const nextDueDate = new Date();
-    nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+    if (selectedPlan) {
+      const plan = membershipPlans.find(p => p.id === selectedPlan);
+      if (plan) {
+        nextDueDate.setDate(nextDueDate.getDate() + plan.durationDays);
+      } else {
+        nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      }
+    } else {
+      nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+    }
 
     try {
       await addPayment({

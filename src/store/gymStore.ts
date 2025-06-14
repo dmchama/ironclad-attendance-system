@@ -309,7 +309,7 @@ export const useGymStore = create<GymStore>((set, get) => ({
         gymId: plan.gym_id,
         planName: plan.plan_name,
         planType: plan.plan_type as 'daily' | 'monthly' | '3_month' | '6_month' | 'yearly',
-        price: parseFloat(plan.price),
+        price: parseFloat(plan.price.toString()),
         durationDays: plan.duration_days,
         isActive: plan.is_active,
         createdAt: plan.created_at,

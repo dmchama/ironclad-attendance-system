@@ -68,11 +68,9 @@ const Index = () => {
 
   // Show appropriate dashboard based on auth state
   if (authState.isAuthenticated) {
-    if (authState.userType === 'gym_admin' && authState.gymId && authState.gymName) {
+    if (authState.userType === 'gym_admin') {
       return (
         <GymAdminDashboard
-          gymId={authState.gymId}
-          gymName={authState.gymName}
           onLogout={handleLogout}
         />
       );
