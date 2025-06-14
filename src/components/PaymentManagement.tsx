@@ -42,7 +42,7 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
     let membershipType = user.membershipType;
     let membershipPlanId = undefined;
 
-    if (selectedPlan) {
+    if (selectedPlan && selectedPlan !== "no_plan") {
       const plan = membershipPlans.find(p => p.id === selectedPlan);
       if (plan) {
         amount = plan.price;
@@ -77,7 +77,7 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
     
     // Calculate next due date based on plan type
     const nextDueDate = new Date();
-    if (selectedPlan) {
+    if (selectedPlan && selectedPlan !== "no_plan") {
       const plan = membershipPlans.find(p => p.id === selectedPlan);
       if (plan) {
         nextDueDate.setDate(nextDueDate.getDate() + plan.durationDays);
@@ -257,7 +257,7 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
                   <SelectValue placeholder="Choose a plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No plan</SelectItem>
+                  <SelectItem value="no_plan">No plan</SelectItem>
                   {membershipPlans
                     .filter(plan => plan.isActive)
                     .map((plan) => (
@@ -276,7 +276,7 @@ const PaymentManagement = ({ gymId }: PaymentManagementProps) => {
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
                 placeholder="Or enter custom amount"
-                disabled={!!selectedPlan}
+                disabled={!!selectedPlan && selectedPlan !== "no_plan"}
               />
             </div>
             <Button 
