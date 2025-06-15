@@ -21,15 +21,19 @@ const GymProfile = () => {
         try {
           const { gymId } = JSON.parse(gymData);
           if (gymId) {
-            console.log('GymProfile: Loading gym data for identifier:', gymId);
+            console.log('=== PROFILE: Loading gym data for identifier:', gymId);
             setLoading(true);
             fetchCurrentGym(gymId).finally(() => setLoading(false));
+          } else {
+            console.error('=== PROFILE: No gymId in localStorage data');
           }
         } catch (error) {
-          console.error('Error parsing gym data from localStorage:', error);
+          console.error('=== PROFILE: Error parsing gym data from localStorage:', error);
           // Clear invalid data
           localStorage.removeItem('gymAdmin');
         }
+      } else {
+        console.warn('=== PROFILE: No gymAdmin data in localStorage');
       }
     }
   }, [currentGym, fetchCurrentGym]);
@@ -42,6 +46,8 @@ const GymProfile = () => {
         if (gymId) {
           setLoading(true);
           
+          console.log('=== RETRY: Starting retry process for gym ID:', gymId);
+          
           // First run debug to see what's in the database
           await debugGymData(gymId);
           
@@ -52,9 +58,16 @@ const GymProfile = () => {
             title: "Retry attempted",
             description: "Check console logs for detailed information"
           });
+        } else {
+          console.error('=== RETRY: No gymId found in localStorage');
+          toast({
+            title: "Error",
+            description: "No gym ID found in storage. Please login again.",
+            variant: "destructive"
+          });
         }
       } catch (error) {
-        console.error('Error parsing gym data:', error);
+        console.error('=== RETRY: Error parsing gym data:', error);
         toast({
           title: "Error",
           description: "Invalid gym data in storage. Please login again.",
@@ -73,6 +86,7 @@ const GymProfile = () => {
   };
 
   const handleClearAndRelogin = () => {
+    console.log('=== CLEAR: Clearing all data and reloading page');
     localStorage.removeItem('gymAdmin');
     toast({
       title: "Data cleared",
@@ -107,6 +121,7 @@ const GymProfile = () => {
             <li>• Invalid gym ID in storage</li>
             <li>• Gym data was deleted from database</li>
             <li>• Session expired or corrupted</li>
+            <li>• Database connection issues</li>
           </ul>
           
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -127,6 +142,12 @@ const GymProfile = () => {
             >
               Clear Data & Re-login
             </Button>
+          </div>
+          
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-600">
+              If this persists, check browser console for detailed error logs
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import UnifiedAuth from '@/components/UnifiedAuth';
 import GymAdminDashboard from '@/components/GymAdminDashboard';
@@ -81,7 +82,6 @@ const Index = () => {
     handleSessionChange();
   }, [session]);
 
-
   const handleAuthSuccess = (authData: {
     userType: string;
     userId?: string;
@@ -89,12 +89,20 @@ const Index = () => {
     gymId?: string;
     gymName?: string;
   }) => {
+    console.log('=== AUTH SUCCESS: Received auth data:', authData);
+    
     if (authData.userType === 'gym_admin' && authData.gymId && authData.gymName) {
-      localStorage.setItem('gymAdmin', JSON.stringify({
-        gymId: authData.gymId,
-        gymName: authData.gymName
-      }));
+      // Store the actual gym ID returned from authentication
+      const gymAdminData = {
+        gymId: authData.gymId,  // This should be the actual gym ID
+        gymName: authData.gymName,
+        userId: authData.userId
+      };
+      
+      console.log('=== AUTH SUCCESS: Storing gym admin data:', gymAdminData);
+      localStorage.setItem('gymAdmin', JSON.stringify(gymAdminData));
     }
+    
     setAuthState({
       isAuthenticated: true,
       ...authData,
@@ -102,9 +110,15 @@ const Index = () => {
   };
 
   const handleLogout = async () => {
+    console.log('=== LOGOUT: Clearing auth state and localStorage');
+    
     if (authState.userType === 'super_admin') {
       await supabase.auth.signOut();
     }
+    
+    // Clear all stored data
+    localStorage.removeItem('gymAdmin');
+    
     setAuthState({
       isAuthenticated: false,
       userType: null

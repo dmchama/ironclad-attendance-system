@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -145,17 +146,21 @@ export const useGymStore = create<GymStore>((set, get) => ({
     try {
       console.log('=== DEBUG: Starting gym data debug for identifier:', identifier);
       
-      // Check all gyms in database
+      // Check all gyms in database with more detailed query
       const { data: allGyms, error: allError } = await supabase
         .from('gyms')
-        .select('id, name, username, email, status');
+        .select('*');
         
-      console.log('=== DEBUG: All gyms in database:', allGyms);
+      console.log('=== DEBUG: All gyms in database (full data):', allGyms);
       console.log('=== DEBUG: Error (if any):', allError);
       
       // Check localStorage
       const storedData = localStorage.getItem('gymAdmin');
       console.log('=== DEBUG: localStorage gymAdmin data:', storedData);
+      
+      // Check if identifier is UUID or username
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+      console.log('=== DEBUG: Identifier is UUID:', isUUID);
       
     } catch (error) {
       console.error('=== DEBUG: Error in debug function:', error);
@@ -164,94 +169,89 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   fetchCurrentGym: async (gymId: string) => {
     try {
-      console.log('Fetching gym with identifier:', gymId);
+      console.log('=== FETCH: Starting fetchCurrentGym with identifier:', gymId);
       
-      // Add debug information
+      // Add debug information first
       await get().debugGymData(gymId);
       
-      // Try to fetch by username first (since login returns username)
-      const { data: gymByUsername, error: usernameError } = await supabase
-        .from('gyms')
-        .select('*')
-        .eq('username', gymId)
-        .maybeSingle();
-        
-      if (!usernameError && gymByUsername) {
-        console.log('Found gym by username:', gymByUsername);
+      // Check if gymId is actually a UUID or username
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(gymId);
+      
+      let gymData = null;
+      
+      if (isUUID) {
+        // Try to fetch by ID first
+        console.log('=== FETCH: Attempting to fetch by ID:', gymId);
+        const { data, error } = await supabase
+          .from('gyms')
+          .select('*')
+          .eq('id', gymId)
+          .maybeSingle();
+          
+        if (error) {
+          console.error('=== FETCH: Error fetching by ID:', error);
+        } else {
+          console.log('=== FETCH: Result by ID:', data);
+          gymData = data;
+        }
+      } else {
+        // Try to fetch by username
+        console.log('=== FETCH: Attempting to fetch by username:', gymId);
+        const { data, error } = await supabase
+          .from('gyms')
+          .select('*')
+          .eq('username', gymId)
+          .maybeSingle();
+          
+        if (error) {
+          console.error('=== FETCH: Error fetching by username:', error);
+        } else {
+          console.log('=== FETCH: Result by username:', data);
+          gymData = data;
+        }
+      }
+
+      if (gymData) {
         const gym: Gym = {
-          id: gymByUsername.id,
-          name: gymByUsername.name,
-          email: gymByUsername.email,
-          phone: gymByUsername.phone || '',
-          address: gymByUsername.address || '',
-          gymQrCode: gymByUsername.gym_qr_code,
-          ownerId: gymByUsername.owner_id || undefined,
-          status: gymByUsername.status as 'active' | 'inactive' | 'suspended',
-          createdAt: gymByUsername.created_at,
-          updatedAt: gymByUsername.updated_at,
-          username: gymByUsername.username || undefined,
-          adminName: gymByUsername.admin_name || undefined,
-          adminEmail: gymByUsername.admin_email || undefined
+          id: gymData.id,
+          name: gymData.name,
+          email: gymData.email,
+          phone: gymData.phone || '',
+          address: gymData.address || '',
+          gymQrCode: gymData.gym_qr_code,
+          ownerId: gymData.owner_id || undefined,
+          status: gymData.status as 'active' | 'inactive' | 'suspended',
+          createdAt: gymData.created_at,
+          updatedAt: gymData.updated_at,
+          username: gymData.username || undefined,
+          adminName: gymData.admin_name || undefined,
+          adminEmail: gymData.admin_email || undefined
         };
-        
-        console.log('Gym fetched successfully by username:', gym);
+
+        console.log('=== FETCH: Gym found and processed:', gym);
         set({ currentGym: gym });
         
-        // Update localStorage with correct gym ID
+        // Update localStorage with correct gym ID if needed
         const storedData = localStorage.getItem('gymAdmin');
         if (storedData) {
           try {
             const parsed = JSON.parse(storedData);
-            parsed.gymId = gym.id;
-            localStorage.setItem('gymAdmin', JSON.stringify(parsed));
-            console.log('Updated localStorage with correct gym ID:', gym.id);
+            if (parsed.gymId !== gym.id) {
+              parsed.gymId = gym.id;
+              localStorage.setItem('gymAdmin', JSON.stringify(parsed));
+              console.log('=== FETCH: Updated localStorage with correct gym ID:', gym.id);
+            }
           } catch (e) {
-            console.error('Error updating localStorage:', e);
+            console.error('=== FETCH: Error updating localStorage:', e);
           }
         }
         return;
       }
 
-      // If not found by username, try by ID
-      const { data, error } = await supabase
-        .from('gyms')
-        .select('*')
-        .eq('id', gymId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
-
-      if (data) {
-        const gym: Gym = {
-          id: data.id,
-          name: data.name,
-          email: data.email,
-          phone: data.phone || '',
-          address: data.address || '',
-          gymQrCode: data.gym_qr_code,
-          ownerId: data.owner_id || undefined,
-          status: data.status as 'active' | 'inactive' | 'suspended',
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-          username: data.username || undefined,
-          adminName: data.admin_name || undefined,
-          adminEmail: data.admin_email || undefined
-        };
-
-        console.log('Gym fetched successfully by ID:', gym);
-        set({ currentGym: gym });
-        return;
-      }
-
-      console.warn('No gym found with identifier:', gymId);
-      console.log('=== DEBUG: Clearing localStorage due to invalid gym ID');
-      localStorage.removeItem('gymAdmin');
+      console.warn('=== FETCH: No gym found with identifier:', gymId);
       set({ currentGym: null });
     } catch (error) {
-      console.error('Error fetching current gym:', error);
+      console.error('=== FETCH: Error in fetchCurrentGym:', error);
       set({ currentGym: null });
     }
   },
