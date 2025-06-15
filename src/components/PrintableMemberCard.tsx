@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Print, QrCode, User, Calendar, CreditCard } from 'lucide-react';
+import { Printer, QrCode, User, Calendar, CreditCard } from 'lucide-react';
 
 interface PrintableMemberCardProps {
   member: {
@@ -14,7 +14,7 @@ interface PrintableMemberCardProps {
     membershipType: string;
     joinDate: string;
     membershipEndDate?: string;
-    username: string;
+    username?: string;
     barcode?: string;
   };
   gymName: string;
@@ -25,7 +25,7 @@ const PrintableMemberCard = ({ member, gymName, onPrint }: PrintableMemberCardPr
   const generateQRData = () => {
     return JSON.stringify({
       memberId: member.id,
-      username: member.username,
+      username: member.username || member.id,
       gymName: gymName
     });
   };
@@ -35,7 +35,7 @@ const PrintableMemberCard = ({ member, gymName, onPrint }: PrintableMemberCardPr
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Member Card Preview</h3>
         <Button onClick={onPrint} className="print:hidden">
-          <Print className="w-4 h-4 mr-2" />
+          <Printer className="w-4 h-4 mr-2" />
           Print Card
         </Button>
       </div>
@@ -96,17 +96,19 @@ const PrintableMemberCard = ({ member, gymName, onPrint }: PrintableMemberCardPr
               </div>
               
               {/* Login Details */}
-              <div className="bg-white/10 rounded-lg p-3 text-center">
-                <p className="text-xs font-semibold mb-1">Login Details</p>
-                <p className="text-xs">Username: {member.username}</p>
-                <p className="text-xs opacity-75">Check app for password</p>
-              </div>
+              {member.username && (
+                <div className="bg-white/10 rounded-lg p-3 text-center">
+                  <p className="text-xs font-semibold mb-1">Login Details</p>
+                  <p className="text-xs">Username: {member.username}</p>
+                  <p className="text-xs opacity-75">Check app for password</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
       
-      <style jsx>{`
+      <style>{`
         @media print {
           .print-area {
             page-break-inside: avoid;
@@ -114,7 +116,7 @@ const PrintableMemberCard = ({ member, gymName, onPrint }: PrintableMemberCardPr
             padding: 0;
           }
           
-          .print:hidden {
+          .print\\:hidden {
             display: none !important;
           }
           

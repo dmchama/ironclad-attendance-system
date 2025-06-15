@@ -320,7 +320,12 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
   };
 
   const handlePrintMemberCard = (member: User) => {
-    setShowMemberCard(member);
+    // Ensure we have all required fields for the member card
+    const memberCardData = {
+      ...member,
+      username: member.username || member.id // fallback to ID if no username
+    };
+    setShowMemberCard(memberCardData);
     setTimeout(() => {
       window.print();
     }, 100);
