@@ -104,8 +104,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       if (emailResult.success) {
         console.log('Email sent successfully via Web3Forms');
         toast({
-          title: "Email Sent",
-          description: "Login details have been sent to the member's email address",
+          title: "Email Sent Successfully",
+          description: `Login details sent to ${email}. Please ask the member to check their spam/junk folder if not received.`,
         });
       } else {
         throw new Error(emailResult.message);
@@ -113,8 +113,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     } catch (error: any) {
       console.error('Error sending member email via Web3Forms:', error);
       toast({
-        title: "Email Failed",
-        description: error.message || "Failed to send login details via email. Please provide the details manually.",
+        title: "Email Delivery Issue",
+        description: `Failed to send email to ${email}. Please provide the login details manually. Error: ${error.message}`,
         variant: "destructive"
       });
     }
