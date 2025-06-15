@@ -28,7 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Sending email to:', email);
 
     const emailResponse = await resend.emails.send({
-      from: "Gym Management <onboarding@resend.dev>",
+      from: "emoney.csnt@gmail.com",
       to: [email],
       subject: `Welcome to ${gymName} - Your Login Details`,
       html: `
@@ -95,3 +95,4 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
+
