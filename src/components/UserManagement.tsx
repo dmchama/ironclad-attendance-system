@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useGymStore, User } from '@/store/gymStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, UserCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, UserCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserManagementProps {
@@ -54,6 +53,20 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     setEditingUser(null);
   };
 
+  const checkForDuplicates = (email: string, username: string) => {
+    const existingEmailUser = users.find(user => 
+      user.email.toLowerCase() === email.toLowerCase() && 
+      (!editingUser || user.id !== editingUser.id)
+    );
+    
+    const existingUsernameUser = users.find(user => 
+      user.username?.toLowerCase() === username.toLowerCase() && 
+      (!editingUser || user.id !== editingUser.id)
+    );
+
+    return { existingEmailUser, existingUsernameUser };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -75,6 +88,27 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       toast({
         title: "Error",
         description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check for duplicates
+    const { existingEmailUser, existingUsernameUser } = checkForDuplicates(formData.email, formData.username);
+    
+    if (existingEmailUser) {
+      toast({
+        title: "Email Already Exists",
+        description: `A member with email "${formData.email}" already exists. Please use a different email address.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (existingUsernameUser) {
+      toast({
+        title: "Username Already Exists",
+        description: `A member with username "${formData.username}" already exists. Please choose a different username.`,
         variant: "destructive"
       });
       return;
@@ -125,11 +159,35 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       resetForm();
     } catch (error: any) {
       console.error('Error saving member:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save member",
-        variant: "destructive"
-      });
+      
+      // Handle specific database errors
+      if (error.code === '23505') {
+        if (error.message.includes('members_email_key')) {
+          toast({
+            title: "Email Already Exists",
+            description: "A member with this email address already exists. Please use a different email address.",
+            variant: "destructive"
+          });
+        } else if (error.message.includes('members_username_key')) {
+          toast({
+            title: "Username Already Exists", 
+            description: "A member with this username already exists. Please choose a different username.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Duplicate Entry",
+            description: "This information is already being used by another member. Please check email and username.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to save member",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -228,6 +286,17 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
         </Button>
       </div>
 
+      {membershipPlans.length === 0 && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-yellow-800">
+              <AlertCircle className="w-5 h-5" />
+              <p>No membership plans found. Please create membership plans first before adding members.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {showAddForm && (
         <Card>
           <CardHeader>
@@ -263,6 +332,9 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                     required
                     placeholder="Enter email address"
                   />
+                  {formData.email && checkForDuplicates(formData.email, formData.username).existingEmailUser && (
+                    <p className="text-sm text-red-600 mt-1">⚠️ This email is already being used by another member</p>
+                  )}
                 </div>
                 
                 <div>
@@ -343,6 +415,9 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                     placeholder="Member login username"
                     required
                   />
+                  {formData.username && checkForDuplicates(formData.email, formData.username).existingUsernameUser && (
+                    <p className="text-sm text-red-600 mt-1">⚠️ This username is already being used by another member</p>
+                  )}
                 </div>
 
                 <div>
@@ -359,7 +434,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
               </div>
               
               <div className="flex gap-2">
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading || membershipPlans.length === 0}>
                   {loading ? 'Saving...' : (editingUser ? 'Update Member' : 'Add Member')}
                 </Button>
                 <Button type="button" variant="outline" onClick={resetForm}>
