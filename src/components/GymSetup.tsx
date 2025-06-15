@@ -39,13 +39,17 @@ const GymSetup = ({ onGymCreated }: GymSetupProps) => {
 
     setLoading(true);
     try {
-      await createGym(formData);
+      console.log('Creating gym with data:', formData);
+      const gym = await createGym(formData);
+      console.log('Gym created successfully:', gym);
+      
       toast({
         title: "Success",
-        description: "Gym created successfully! You can now manage your gym."
+        description: "Gym created successfully! Default membership plans have been set up automatically.",
       });
       onGymCreated();
     } catch (error: any) {
+      console.error('Error creating gym:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to create gym",
