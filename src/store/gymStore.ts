@@ -98,6 +98,7 @@ interface GymStore {
   generateBarcode: (userId: string) => Promise<string>;
   memberCheckInWithQR: (memberId: string, gymQrCode: string) => Promise<{success: boolean, message: string, gymName: string}>;
   clearCurrentGym: () => void;
+  debugGymData: (identifier: string) => Promise<void>;
 }
 
 export const useGymStore = create<GymStore>((set, get) => ({
@@ -140,9 +141,33 @@ export const useGymStore = create<GymStore>((set, get) => ({
     }
   },
 
+  debugGymData: async (identifier: string) => {
+    try {
+      console.log('=== DEBUG: Starting gym data debug for identifier:', identifier);
+      
+      // Check all gyms in database
+      const { data: allGyms, error: allError } = await supabase
+        .from('gyms')
+        .select('id, name, username, email, status');
+        
+      console.log('=== DEBUG: All gyms in database:', allGyms);
+      console.log('=== DEBUG: Error (if any):', allError);
+      
+      // Check localStorage
+      const storedData = localStorage.getItem('gymAdmin');
+      console.log('=== DEBUG: localStorage gymAdmin data:', storedData);
+      
+    } catch (error) {
+      console.error('=== DEBUG: Error in debug function:', error);
+    }
+  },
+
   fetchCurrentGym: async (gymId: string) => {
     try {
       console.log('Fetching gym with identifier:', gymId);
+      
+      // Add debug information
+      await get().debugGymData(gymId);
       
       // Try to fetch by username first (since login returns username)
       const { data: gymByUsername, error: usernameError } = await supabase
@@ -179,6 +204,7 @@ export const useGymStore = create<GymStore>((set, get) => ({
             const parsed = JSON.parse(storedData);
             parsed.gymId = gym.id;
             localStorage.setItem('gymAdmin', JSON.stringify(parsed));
+            console.log('Updated localStorage with correct gym ID:', gym.id);
           } catch (e) {
             console.error('Error updating localStorage:', e);
           }
@@ -221,6 +247,8 @@ export const useGymStore = create<GymStore>((set, get) => ({
       }
 
       console.warn('No gym found with identifier:', gymId);
+      console.log('=== DEBUG: Clearing localStorage due to invalid gym ID');
+      localStorage.removeItem('gymAdmin');
       set({ currentGym: null });
     } catch (error) {
       console.error('Error fetching current gym:', error);

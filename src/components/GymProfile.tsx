@@ -1,13 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail, Phone, MapPin, QrCode, Copy, Download, Share, Loader2 } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, QrCode, Copy, Download, Share, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useGymStore } from '@/store/gymStore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 
 const GymProfile = () => {
-  const { currentGym, fetchCurrentGym } = useGymStore();
+  const { currentGym, fetchCurrentGym, debugGymData } = useGymStore();
   const { toast } = useToast();
   const [copying, setCopying] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -34,12 +34,61 @@ const GymProfile = () => {
     }
   }, [currentGym, fetchCurrentGym]);
 
+  const handleRetryLoading = async () => {
+    const gymData = localStorage.getItem('gymAdmin');
+    if (gymData) {
+      try {
+        const { gymId } = JSON.parse(gymData);
+        if (gymId) {
+          setLoading(true);
+          
+          // First run debug to see what's in the database
+          await debugGymData(gymId);
+          
+          // Then try to fetch
+          await fetchCurrentGym(gymId);
+          
+          toast({
+            title: "Retry attempted",
+            description: "Check console logs for detailed information"
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing gym data:', error);
+        toast({
+          title: "Error",
+          description: "Invalid gym data in storage. Please login again.",
+          variant: "destructive"
+        });
+        localStorage.removeItem('gymAdmin');
+      }
+    } else {
+      toast({
+        title: "No gym data",
+        description: "Please login again as a gym administrator",
+        variant: "destructive"
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleClearAndRelogin = () => {
+    localStorage.removeItem('gymAdmin');
+    toast({
+      title: "Data cleared",
+      description: "Please login again",
+    });
+    // Trigger a page reload to go back to login
+    window.location.reload();
+  };
+
   if (loading) {
     return (
       <Card>
         <CardContent className="text-center py-8">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
           <p className="text-gray-500">Loading gym data...</p>
+          <p className="text-sm text-gray-400 mt-2">Check browser console for details</p>
         </CardContent>
       </Card>
     );
@@ -49,32 +98,36 @@ const GymProfile = () => {
     return (
       <Card>
         <CardContent className="text-center py-8">
-          <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 mb-2">No gym data available</p>
-          <p className="text-sm text-gray-400">
-            Please ensure you're logged in as a gym administrator
+          <AlertTriangle className="w-16 h-16 text-orange-300 mx-auto mb-4" />
+          <p className="text-gray-700 mb-2 font-medium">Gym profile not found</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Unable to load gym data. This might be due to:
           </p>
-          <Button 
-            onClick={() => {
-              const gymData = localStorage.getItem('gymAdmin');
-              if (gymData) {
-                try {
-                  const { gymId } = JSON.parse(gymData);
-                  if (gymId) {
-                    setLoading(true);
-                    fetchCurrentGym(gymId).finally(() => setLoading(false));
-                  }
-                } catch (error) {
-                  console.error('Error parsing gym data:', error);
-                }
-              }
-            }}
-            variant="outline"
-            className="mt-4"
-          >
-            <Loader2 className="w-4 h-4 mr-2" />
-            Retry Loading
-          </Button>
+          <ul className="text-xs text-gray-500 text-left mb-6 max-w-md mx-auto space-y-1">
+            <li>• Invalid gym ID in storage</li>
+            <li>• Gym data was deleted from database</li>
+            <li>• Session expired or corrupted</li>
+          </ul>
+          
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button 
+              onClick={handleRetryLoading}
+              disabled={loading}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Debug & Retry
+            </Button>
+            
+            <Button 
+              onClick={handleClearAndRelogin}
+              variant="destructive"
+              size="sm"
+            >
+              Clear Data & Re-login
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
