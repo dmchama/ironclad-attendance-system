@@ -10,13 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Edit, Trash2, UserCircle, AlertCircle, Search, Grid2x2, LayoutList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserManagementProps {
   gymId: string;
 }
 
 const UserManagement = ({ gymId }: UserManagementProps) => {
-  const { users, addUser, updateUser, deleteUser, generateBarcode, loading, membershipPlans, fetchMembershipPlans } = useGymStore();
+  const { users, addUser, updateUser, deleteUser, generateBarcode, loading, membershipPlans, fetchMembershipPlans, currentGym } = useGymStore();
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -73,6 +74,44 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     );
 
     return { existingEmailUser, existingUsernameUser };
+  };
+
+  const sendMemberSMS = async (phone: string, memberName: string, username: string, password: string) => {
+    try {
+      console.log('Sending SMS to new member...');
+      
+      const { data, error } = await supabase.functions.invoke('send-member-sms', {
+        body: {
+          phone: phone,
+          memberName: memberName,
+          username: username,
+          password: password,
+          gymName: currentGym?.name || 'Your Gym'
+        }
+      });
+
+      if (error) {
+        console.error('SMS sending error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        console.log('SMS sent successfully:', data.messageSid);
+        toast({
+          title: "SMS Sent",
+          description: "Login details have been sent to the member's phone number",
+        });
+      } else {
+        throw new Error(data?.error || 'Failed to send SMS');
+      }
+    } catch (error: any) {
+      console.error('Error sending member SMS:', error);
+      toast({
+        title: "SMS Failed",
+        description: error.message || "Failed to send login details via SMS. Please provide the details manually.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,10 +196,19 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
           membershipEndDate,
           membershipPlanId: formData.membershipPlanId
         }, gymId);
+        
         toast({
           title: "Success",
           description: "Member added successfully"
         });
+
+        // Send SMS with login details for new members only
+        try {
+          await sendMemberSMS(formData.phone, formData.name, formData.username, formData.password);
+        } catch (smsError) {
+          // SMS failure shouldn't prevent member creation, just log it
+          console.warn('SMS sending failed, but member was created successfully');
+        }
       }
       
       console.log('Member saved successfully');
