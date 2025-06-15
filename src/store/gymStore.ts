@@ -96,8 +96,6 @@ interface GymStore {
   addPayment: (payment: Omit<Payment, 'id'>) => Promise<void>;
   updatePayment: (id: string, payment: Partial<Payment>) => Promise<void>;
   generateBarcode: (userId: string) => Promise<string>;
-  authenticateGymAdmin: (username: string, password: string) => Promise<{gymId: string, gymName: string} | null>;
-  authenticateMember: (username: string, password: string) => Promise<{memberId: string, memberName: string, gymId: string} | null>;
   memberCheckInWithQR: (memberId: string, gymQrCode: string) => Promise<{success: boolean, message: string, gymName: string}>;
 }
 
@@ -677,95 +675,6 @@ export const useGymStore = create<GymStore>((set, get) => ({
       return barcode;
     } catch (error) {
       console.error('Error generating barcode:', error);
-      throw error;
-    }
-  },
-
-  authenticateGymAdmin: async (username: string, password: string) => {
-    try {
-      console.log('Authenticating gym admin:', username);
-      
-      const { data, error } = await supabase
-        .rpc('authenticate_gym_admin', {
-          input_username: username,
-          input_password: password
-        });
-
-      if (error) {
-        console.error('Authentication error:', error);
-        throw error;
-      }
-
-      console.log('Authentication response:', data);
-
-      if (data && data.length > 0 && data[0].is_authenticated) {
-        console.log('Authentication successful for gym:', data[0].gym_name);
-        
-        // Fetch the complete gym data immediately after authentication
-        const { data: gymData, error: gymError } = await supabase
-          .from('gyms')
-          .select('*')
-          .eq('id', data[0].gym_id)
-          .maybeSingle();
-
-        if (gymError) {
-          console.error('Error fetching gym data:', gymError);
-        } else if (gymData) {
-          // Set the current gym data in the store
-          const gym: Gym = {
-            id: gymData.id,
-            name: gymData.name,
-            email: gymData.email,
-            phone: gymData.phone || '',
-            address: gymData.address || '',
-            gymQrCode: gymData.gym_qr_code,
-            ownerId: gymData.owner_id || undefined,
-            status: gymData.status as 'active' | 'inactive' | 'suspended',
-            createdAt: gymData.created_at,
-            updatedAt: gymData.updated_at,
-            username: gymData.username || undefined,
-            adminName: gymData.admin_name || undefined,
-            adminEmail: gymData.admin_email || undefined
-          };
-          
-          console.log('Setting current gym in store:', gym);
-          set({ currentGym: gym });
-        }
-        
-        return {
-          gymId: data[0].gym_id,
-          gymName: data[0].gym_name
-        };
-      }
-      
-      console.log('Authentication failed - invalid credentials');
-      return null;
-    } catch (error) {
-      console.error('Error authenticating gym admin:', error);
-      throw error;
-    }
-  },
-
-  authenticateMember: async (username: string, password: string) => {
-    try {
-      const { data, error } = await supabase
-        .rpc('authenticate_member', {
-          input_username: username,
-          input_password: password
-        });
-
-      if (error) throw error;
-
-      if (data && data.length > 0 && data[0].is_authenticated) {
-        return {
-          memberId: data[0].member_id,
-          memberName: data[0].member_name,
-          gymId: data[0].gym_id
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error authenticating member:', error);
       throw error;
     }
   },
