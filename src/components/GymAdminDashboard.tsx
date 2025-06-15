@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Building2, Users, UserCheck, DollarSign, LogOut, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, UserCheck, DollarSign, LogOut, CreditCard, Menu, X } from 'lucide-react';
 import { useGymStore } from '@/store/gymStore';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +22,7 @@ const GymAdminDashboard = ({ onLogout }: GymAdminDashboardProps) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [gymData, setGymData] = useState<{ gymId: string; gymName: string } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const storedData = localStorage.getItem('gymAdmin');
@@ -49,16 +50,27 @@ const GymAdminDashboard = ({ onLogout }: GymAdminDashboardProps) => {
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'profile', label: 'Gym Profile', icon: Building2 },
-    { id: 'members', label: 'Members', icon: Users },
-    { id: 'membership-plans', label: 'Membership Plans', icon: CreditCard },
-    { id: 'attendance', label: 'Attendance', icon: UserCheck },
-    { id: 'payments', label: 'Payments', icon: DollarSign },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'from-blue-500 to-blue-600' },
+    { id: 'profile', label: 'Gym Profile', icon: Building2, color: 'from-purple-500 to-purple-600' },
+    { id: 'members', label: 'Members', icon: Users, color: 'from-green-500 to-green-600' },
+    { id: 'membership-plans', label: 'Membership Plans', icon: CreditCard, color: 'from-orange-500 to-orange-600' },
+    { id: 'attendance', label: 'Attendance', icon: UserCheck, color: 'from-teal-500 to-teal-600' },
+    { id: 'payments', label: 'Payments', icon: DollarSign, color: 'from-emerald-500 to-emerald-600' },
   ];
 
   const renderContent = () => {
-    if (!gymData?.gymId) return <div>Loading...</div>;
+    if (!gymData?.gymId) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <p className="text-gray-600 font-medium">Loading gym data...</p>
+          </div>
+        </div>
+      );
+    }
 
     switch (activeTab) {
       case 'dashboard':
@@ -79,30 +91,79 @@ const GymAdminDashboard = ({ onLogout }: GymAdminDashboardProps) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 bg-white flex flex-col border-r">
-        <div className="h-16 flex items-center justify-center border-b">
-          <h1 className="text-lg font-semibold">{gymData?.gymName || 'Gym Admin'}</h1>
+      <div className={`
+        fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* Header */}
+        <div className="h-20 flex items-center justify-between px-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold truncate">{gymData?.gymName || 'Gym Admin'}</h1>
+              <p className="text-blue-100 text-sm">Admin Dashboard</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden text-white hover:bg-white hover:bg-opacity-20"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="w-5 h-5" />
+          </Button>
         </div>
-        <nav className="flex-1 p-4">
-          <ul>
-            {menuItems.map((item) => (
-              <li key={item.id} className="mb-2">
-                <Button
-                  variant="ghost"
-                  className={`w-full justify-start ${activeTab === item.id ? 'text-blue-600' : ''}`}
-                  onClick={() => setActiveTab(item.id)}
-                >
-                  <item.icon className="w-4 h-4 mr-2" />
-                  {item.label}
-                </Button>
-              </li>
-            ))}
-          </ul>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              className={`
+                w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
+                ${activeTab === item.id 
+                  ? `bg-gradient-to-r ${item.color} text-white shadow-lg transform scale-105` 
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                }
+              `}
+              onClick={() => {
+                setActiveTab(item.id);
+                setSidebarOpen(false);
+              }}
+            >
+              <div className={`
+                w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200
+                ${activeTab === item.id 
+                  ? 'bg-white bg-opacity-20' 
+                  : 'bg-gray-200 group-hover:bg-gray-300'
+                }
+              `}>
+                <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-white' : 'text-gray-600'}`} />
+              </div>
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
         </nav>
-        <div className="p-4 border-t">
-          <Button variant="outline" className="w-full" onClick={handleLogout}>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t border-gray-200">
+          <Button 
+            variant="outline" 
+            className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-all duration-200" 
+            onClick={handleLogout}
+          >
             <LogOut className="w-4 h-4 mr-2" />
             Logout
           </Button>
@@ -110,12 +171,46 @@ const GymAdminDashboard = ({ onLogout }: GymAdminDashboardProps) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4">
-        <Card className="h-full">
-          <CardContent className="h-full">
-            {renderContent()}
-          </CardContent>
-        </Card>
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Top Bar */}
+        <div className="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 capitalize">
+                {activeTab.replace('-', ' ')}
+              </h2>
+              <p className="text-sm text-gray-600">
+                Manage your gym {activeTab.replace('-', ' ').toLowerCase()}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-green-700">Active</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 p-6 lg:p-8 overflow-auto">
+          <div className="max-w-7xl mx-auto">
+            <Card className="h-full shadow-sm border-0 bg-white/70 backdrop-blur-sm">
+              <CardContent className="h-full p-6">
+                {renderContent()}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
