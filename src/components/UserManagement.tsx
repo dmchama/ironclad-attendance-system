@@ -601,7 +601,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                       {getPlanName(user.membershipPlanId)}
                       {user.membershipEndDate && (
                         <div className="text-xs text-gray-500">
-                          Expires: {new Date(user.membersshipEndDate).toLocaleDateString()}
+                          Expires: {new Date(user.membershipEndDate).toLocaleDateString()}
                         </div>
                       )}
                     </div>
