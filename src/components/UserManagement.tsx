@@ -468,9 +468,6 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                     required
                     placeholder="Enter email address"
                   />
-                  {formData.email && checkForDuplicates(formData.email, formData.username).existingEmailUser && (
-                    <p className="text-sm text-red-600 mt-1">⚠️ This email is already being used by another member</p>
-                  )}
                 </div>
                 
                 <div>
@@ -551,9 +548,6 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                     placeholder="Member login username"
                     required
                   />
-                  {formData.username && checkForDuplicates(formData.email, formData.username).existingUsernameUser && (
-                    <p className="text-sm text-red-600 mt-1">⚠️ This username is already being used by another member</p>
-                  )}
                 </div>
 
                 <div>
