@@ -142,58 +142,16 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
   fetchCurrentGym: async (gymId: string) => {
     try {
-      console.log('Fetching gym with ID:', gymId);
+      console.log('Fetching gym with identifier:', gymId);
       
-      // First try to fetch by ID
-      const { data, error } = await supabase
-        .from('gyms')
-        .select('*')
-        .eq('id', gymId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
-
-      if (data) {
-        const gym: Gym = {
-          id: data.id,
-          name: data.name,
-          email: data.email,
-          phone: data.phone || '',
-          address: data.address || '',
-          gymQrCode: data.gym_qr_code,
-          ownerId: data.owner_id || undefined,
-          status: data.status as 'active' | 'inactive' | 'suspended',
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-          username: data.username || undefined,
-          adminName: data.admin_name || undefined,
-          adminEmail: data.admin_email || undefined
-        };
-
-        console.log('Gym fetched successfully by ID:', gym);
-        set({ currentGym: gym });
-        return;
-      }
-
-      console.warn('No gym found with ID:', gymId);
-      
-      // If not found by ID, try by username (in case gymId is actually a username)
+      // Try to fetch by username first (since login returns username)
       const { data: gymByUsername, error: usernameError } = await supabase
         .from('gyms')
         .select('*')
         .eq('username', gymId)
         .maybeSingle();
         
-      if (usernameError) {
-        console.error('Error searching by username:', usernameError);
-        set({ currentGym: null });
-        return;
-      }
-      
-      if (gymByUsername) {
+      if (!usernameError && gymByUsername) {
         console.log('Found gym by username:', gymByUsername);
         const gym: Gym = {
           id: gymByUsername.id,
@@ -227,7 +185,42 @@ export const useGymStore = create<GymStore>((set, get) => ({
         }
         return;
       }
-      
+
+      // If not found by username, try by ID
+      const { data, error } = await supabase
+        .from('gyms')
+        .select('*')
+        .eq('id', gymId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const gym: Gym = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          phone: data.phone || '',
+          address: data.address || '',
+          gymQrCode: data.gym_qr_code,
+          ownerId: data.owner_id || undefined,
+          status: data.status as 'active' | 'inactive' | 'suspended',
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+          username: data.username || undefined,
+          adminName: data.admin_name || undefined,
+          adminEmail: data.admin_email || undefined
+        };
+
+        console.log('Gym fetched successfully by ID:', gym);
+        set({ currentGym: gym });
+        return;
+      }
+
+      console.warn('No gym found with identifier:', gymId);
       set({ currentGym: null });
     } catch (error) {
       console.error('Error fetching current gym:', error);

@@ -21,11 +21,14 @@ const GymProfile = () => {
         try {
           const { gymId } = JSON.parse(gymData);
           if (gymId) {
+            console.log('GymProfile: Loading gym data for identifier:', gymId);
             setLoading(true);
             fetchCurrentGym(gymId).finally(() => setLoading(false));
           }
         } catch (error) {
           console.error('Error parsing gym data from localStorage:', error);
+          // Clear invalid data
+          localStorage.removeItem('gymAdmin');
         }
       }
     }
@@ -51,6 +54,27 @@ const GymProfile = () => {
           <p className="text-sm text-gray-400">
             Please ensure you're logged in as a gym administrator
           </p>
+          <Button 
+            onClick={() => {
+              const gymData = localStorage.getItem('gymAdmin');
+              if (gymData) {
+                try {
+                  const { gymId } = JSON.parse(gymData);
+                  if (gymId) {
+                    setLoading(true);
+                    fetchCurrentGym(gymId).finally(() => setLoading(false));
+                  }
+                } catch (error) {
+                  console.error('Error parsing gym data:', error);
+                }
+              }
+            }}
+            variant="outline"
+            className="mt-4"
+          >
+            <Loader2 className="w-4 h-4 mr-2" />
+            Retry Loading
+          </Button>
         </CardContent>
       </Card>
     );
