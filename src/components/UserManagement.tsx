@@ -8,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, UserCircle, AlertCircle, Search, Grid2x2, LayoutList } from 'lucide-react';
+import { Plus, Edit, Trash2, UserCircle, AlertCircle, Search, Grid2x2, LayoutList, Mail, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import MemberCredentialsNotification from './MemberCredentialsNotification';
+import PrintableMemberCard from './PrintableMemberCard';
 
 interface UserManagementProps {
   gymId: string;
@@ -23,6 +25,16 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCredentials, setShowCredentials] = useState<{
+    show: boolean;
+    memberData?: {
+      name: string;
+      username: string;
+      password: string;
+      email: string;
+    };
+  }>({ show: false });
+  const [showMemberCard, setShowMemberCard] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -76,13 +88,13 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     return { existingEmailUser, existingUsernameUser };
   };
 
-  const sendMemberSMS = async (phone: string, memberName: string, username: string, password: string) => {
+  const sendMemberEmail = async (email: string, memberName: string, username: string, password: string) => {
     try {
-      console.log('Sending SMS to new member...');
+      console.log('Sending email to new member...');
       
-      const { data, error } = await supabase.functions.invoke('send-member-sms', {
+      const { data, error } = await supabase.functions.invoke('send-member-email', {
         body: {
-          phone: phone,
+          email: email,
           memberName: memberName,
           username: username,
           password: password,
@@ -91,24 +103,24 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       });
 
       if (error) {
-        console.error('SMS sending error:', error);
+        console.error('Email sending error:', error);
         throw error;
       }
 
       if (data?.success) {
-        console.log('SMS sent successfully:', data.messageSid);
+        console.log('Email sent successfully:', data.emailId);
         toast({
-          title: "SMS Sent",
-          description: "Login details have been sent to the member's phone number",
+          title: "Email Sent",
+          description: "Login details have been sent to the member's email address",
         });
       } else {
-        throw new Error(data?.error || 'Failed to send SMS');
+        throw new Error(data?.error || 'Failed to send email');
       }
     } catch (error: any) {
-      console.error('Error sending member SMS:', error);
+      console.error('Error sending member email:', error);
       toast({
-        title: "SMS Failed",
-        description: error.message || "Failed to send login details via SMS. Please provide the details manually.",
+        title: "Email Failed",
+        description: error.message || "Failed to send login details via email. Please provide the details manually.",
         variant: "destructive"
       });
     }
@@ -188,6 +200,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
           title: "Success",
           description: "Member updated successfully"
         });
+        resetForm();
       } else {
         await addUser({
           ...formData,
@@ -202,17 +215,28 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
           description: "Member added successfully"
         });
 
-        // Send SMS with login details for new members only
+        // Show in-app notification with credentials
+        setShowCredentials({
+          show: true,
+          memberData: {
+            name: formData.name,
+            username: formData.username,
+            password: formData.password,
+            email: formData.email
+          }
+        });
+
+        // Send email with login details for new members only
         try {
-          await sendMemberSMS(formData.phone, formData.name, formData.username, formData.password);
-        } catch (smsError) {
-          // SMS failure shouldn't prevent member creation, just log it
-          console.warn('SMS sending failed, but member was created successfully');
+          await sendMemberEmail(formData.email, formData.name, formData.username, formData.password);
+        } catch (emailError) {
+          console.warn('Email sending failed, but member was created successfully');
         }
+        
+        resetForm();
       }
       
       console.log('Member saved successfully');
-      resetForm();
     } catch (error: any) {
       console.error('Error saving member:', error);
       
@@ -295,6 +319,13 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
     }
   };
 
+  const handlePrintMemberCard = (member: User) => {
+    setShowMemberCard(member);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
   const getMembershipColor = (type: string) => {
     switch (type) {
       case 'premium': return 'bg-yellow-100 text-yellow-800';
@@ -328,6 +359,26 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
 
   return (
     <div className="space-y-6">
+      {showCredentials.show && showCredentials.memberData && (
+        <MemberCredentialsNotification
+          memberName={showCredentials.memberData.name}
+          username={showCredentials.memberData.username}
+          password={showCredentials.memberData.password}
+          email={showCredentials.memberData.email}
+          onClose={() => setShowCredentials({ show: false })}
+        />
+      )}
+
+      {showMemberCard && (
+        <div className="print:block hidden">
+          <PrintableMemberCard
+            member={showMemberCard}
+            gymName={currentGym?.name || 'Your Gym'}
+            onPrint={() => window.print()}
+          />
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Member Management</h2>
         <Button 
@@ -548,12 +599,21 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEdit(user)}
+                      title="Edit Member"
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handlePrintMemberCard(user)}
+                      title="Print Member Card"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" title="Delete Member">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -661,8 +721,17 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(user)}
+                        title="Edit Member"
                       >
                         <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePrintMemberCard(user)}
+                        title="Print Member Card"
+                      >
+                        <CreditCard className="w-4 h-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
