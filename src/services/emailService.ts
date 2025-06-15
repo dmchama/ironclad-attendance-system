@@ -1,10 +1,6 @@
 
-import emailjs from '@emailjs/browser';
-
-// EmailJS configuration
-const EMAILJS_SERVICE_ID = 'YOUR_SERVICE_ID'; // User needs to replace this
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID'; // User needs to replace this
-const EMAILJS_PUBLIC_KEY = 'YOUR_PUBLIC_KEY'; // User needs to replace this
+// Web3Forms configuration
+const WEB3FORMS_ACCESS_KEY = 'YOUR_ACCESS_KEY'; // Get this from https://web3forms.com
 
 export interface EmailData {
   to_email: string;
@@ -16,38 +12,49 @@ export interface EmailData {
 
 export const sendMemberEmail = async (emailData: EmailData): Promise<{ success: boolean; message: string }> => {
   try {
-    // Initialize EmailJS with public key
-    emailjs.init(EMAILJS_PUBLIC_KEY);
-    
-    const templateParams = {
-      to_email: emailData.to_email,
-      to_name: emailData.to_name,
-      username: emailData.username,
-      password: emailData.password,
-      gym_name: emailData.gym_name,
-      from_name: emailData.gym_name
-    };
+    console.log('Sending email via Web3Forms...');
 
-    console.log('Sending email via EmailJS with params:', templateParams);
+    const formData = new FormData();
+    formData.append('access_key', WEB3FORMS_ACCESS_KEY);
+    formData.append('subject', `Welcome to ${emailData.gym_name} - Your Login Details`);
+    formData.append('email', emailData.to_email);
+    formData.append('name', emailData.to_name);
+    formData.append('message', `
+Hello ${emailData.to_name},
 
-    const response = await emailjs.send(
-      EMAILJS_SERVICE_ID,
-      EMAILJS_TEMPLATE_ID,
-      templateParams
-    );
+Welcome to ${emailData.gym_name}! Your membership has been successfully created.
 
-    console.log('EmailJS response:', response);
+Here are your login details:
+Username: ${emailData.username}
+Password: ${emailData.password}
 
-    if (response.status === 200) {
+Please keep these credentials safe. You can use them to access member features and check in at the gym.
+
+Welcome to your fitness journey at ${emailData.gym_name}!
+
+Best regards,
+${emailData.gym_name} Team
+    `);
+
+    const response = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+
+    console.log('Web3Forms response:', result);
+
+    if (result.success) {
       return {
         success: true,
         message: 'Email sent successfully'
       };
     } else {
-      throw new Error(`EmailJS failed with status: ${response.status}`);
+      throw new Error(result.message || 'Failed to send email');
     }
   } catch (error: any) {
-    console.error('EmailJS error:', error);
+    console.error('Web3Forms error:', error);
     return {
       success: false,
       message: error.message || 'Failed to send email'

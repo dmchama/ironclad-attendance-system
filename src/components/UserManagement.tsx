@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import MemberCredentialsNotification from './MemberCredentialsNotification';
 import PrintableMemberCard from './PrintableMemberCard';
-import { sendMemberEmail as sendEmailViaEmailJS } from '@/services/emailService';
+import { sendMemberEmail as sendEmailViaWeb3Forms } from '@/services/emailService';
 
 interface UserManagementProps {
   gymId: string;
@@ -91,9 +91,9 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
 
   const sendMemberEmail = async (email: string, memberName: string, username: string, password: string) => {
     try {
-      console.log('Sending email to new member via EmailJS...');
+      console.log('Sending email to new member via Web3Forms...');
       
-      const emailResult = await sendEmailViaEmailJS({
+      const emailResult = await sendEmailViaWeb3Forms({
         to_email: email,
         to_name: memberName,
         username: username,
@@ -102,7 +102,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       });
 
       if (emailResult.success) {
-        console.log('Email sent successfully via EmailJS');
+        console.log('Email sent successfully via Web3Forms');
         toast({
           title: "Email Sent",
           description: "Login details have been sent to the member's email address",
@@ -111,7 +111,7 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
         throw new Error(emailResult.message);
       }
     } catch (error: any) {
-      console.error('Error sending member email via EmailJS:', error);
+      console.error('Error sending member email via Web3Forms:', error);
       toast({
         title: "Email Failed",
         description: error.message || "Failed to send login details via email. Please provide the details manually.",
