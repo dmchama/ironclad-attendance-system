@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import MemberCredentialsNotification from './MemberCredentialsNotification';
 import PrintableMemberCard from './PrintableMemberCard';
+import { sendMemberEmail as sendEmailViaEmailJS } from '@/services/emailService';
 
 interface UserManagementProps {
   gymId: string;
@@ -90,34 +91,27 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
 
   const sendMemberEmail = async (email: string, memberName: string, username: string, password: string) => {
     try {
-      console.log('Sending email to new member...');
+      console.log('Sending email to new member via EmailJS...');
       
-      const { data, error } = await supabase.functions.invoke('send-member-email', {
-        body: {
-          email: email,
-          memberName: memberName,
-          username: username,
-          password: password,
-          gymName: currentGym?.name || 'Your Gym'
-        }
+      const emailResult = await sendEmailViaEmailJS({
+        to_email: email,
+        to_name: memberName,
+        username: username,
+        password: password,
+        gym_name: currentGym?.name || 'Your Gym'
       });
 
-      if (error) {
-        console.error('Email sending error:', error);
-        throw error;
-      }
-
-      if (data?.success) {
-        console.log('Email sent successfully:', data.emailId);
+      if (emailResult.success) {
+        console.log('Email sent successfully via EmailJS');
         toast({
           title: "Email Sent",
           description: "Login details have been sent to the member's email address",
         });
       } else {
-        throw new Error(data?.error || 'Failed to send email');
+        throw new Error(emailResult.message);
       }
     } catch (error: any) {
-      console.error('Error sending member email:', error);
+      console.error('Error sending member email via EmailJS:', error);
       toast({
         title: "Email Failed",
         description: error.message || "Failed to send login details via email. Please provide the details manually.",
