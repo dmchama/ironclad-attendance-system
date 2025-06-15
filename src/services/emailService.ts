@@ -1,6 +1,5 @@
-
 // Web3Forms configuration
-const WEB3FORMS_ACCESS_KEY = 'YOUR_ACCESS_KEY'; // Get this from https://web3forms.com
+const WEB3FORMS_ACCESS_KEY = '35bb2793-fbe8-4a07-a968-01dd3179dacf'; // Get this from https://web3forms.com
 
 export interface EmailData {
   to_email: string;
