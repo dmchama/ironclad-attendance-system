@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import UnifiedAuth from '@/components/UnifiedAuth';
 import GymAdminDashboard from '@/components/GymAdminDashboard';
@@ -90,6 +89,12 @@ const Index = () => {
     gymId?: string;
     gymName?: string;
   }) => {
+    if (authData.userType === 'gym_admin' && authData.gymId && authData.gymName) {
+      localStorage.setItem('gymAdmin', JSON.stringify({
+        gymId: authData.gymId,
+        gymName: authData.gymName
+      }));
+    }
     setAuthState({
       isAuthenticated: true,
       ...authData,
@@ -120,7 +125,7 @@ const Index = () => {
       return <SuperAdminDashboard onLogout={handleLogout} />;
     }
     if (authState.userType === 'gym_admin') {
-      return <GymAdminDashboard onLogout={handleLogout} />;
+      return <GymAdminDashboard gymId={authState.gymId} gymName={authState.gymName} onLogout={handleLogout} />;
     }
     if (authState.userType === 'member' && authState.userId && authState.userName && authState.gymId) {
       return (

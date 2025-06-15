@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +21,6 @@ const GymProfile = () => {
         try {
           const { gymId } = JSON.parse(gymData);
           if (gymId) {
-            console.log('GymProfile: Loading gym data for ID:', gymId);
             setLoading(true);
             fetchCurrentGym(gymId).finally(() => setLoading(false));
           }

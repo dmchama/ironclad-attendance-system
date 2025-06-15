@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Building2, Users, UserCheck, DollarSign, LogOut, CreditCard, Menu, X } from 'lucide-react';
 import { useGymStore } from '@/store/gymStore';
@@ -17,31 +18,44 @@ interface GymAdminDashboardProps {
   onLogout?: () => void;
 }
 
-const GymAdminDashboard = ({ onLogout }: GymAdminDashboardProps) => {
-  const { currentGym } = useGymStore();
+const GymAdminDashboard = ({ gymId, gymName, onLogout }: GymAdminDashboardProps) => {
+  const { fetchCurrentGym, clearCurrentGym } = useGymStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [gymData, setGymData] = useState<{ gymId: string; gymName: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const storedData = localStorage.getItem('gymAdmin');
-    if (storedData) {
-      try {
-        const parsedData = JSON.parse(storedData);
-        setGymData(parsedData);
-      } catch (error) {
-        console.error('Error parsing gym data from localStorage:', error);
-        localStorage.removeItem('gymAdmin');
-        navigate('/');
+    let resolvedGymId: string | undefined = gymId;
+    let resolvedGymName: string | undefined = gymName;
+
+    if (!resolvedGymId || !resolvedGymName) {
+      const storedData = localStorage.getItem('gymAdmin');
+      if (storedData) {
+        try {
+          const parsedData = JSON.parse(storedData);
+          resolvedGymId = parsedData.gymId;
+          resolvedGymName = parsedData.gymName;
+        } catch (error) {
+          console.error('Error parsing gym data from localStorage:', error);
+          localStorage.removeItem('gymAdmin');
+          navigate('/');
+          return;
+        }
       }
+    }
+
+    if (resolvedGymId && resolvedGymName) {
+      setGymData({ gymId: resolvedGymId, gymName: resolvedGymName });
+      fetchCurrentGym(resolvedGymId);
     } else {
       navigate('/');
     }
-  }, [navigate]);
+  }, [gymId, gymName, navigate, fetchCurrentGym]);
 
   const handleLogout = () => {
     localStorage.removeItem('gymAdmin');
+    clearCurrentGym();
     if (onLogout) {
       onLogout();
     } else {

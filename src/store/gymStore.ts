@@ -97,6 +97,7 @@ interface GymStore {
   updatePayment: (id: string, payment: Partial<Payment>) => Promise<void>;
   generateBarcode: (userId: string) => Promise<string>;
   memberCheckInWithQR: (memberId: string, gymQrCode: string) => Promise<{success: boolean, message: string, gymName: string}>;
+  clearCurrentGym: () => void;
 }
 
 export const useGymStore = create<GymStore>((set, get) => ({
@@ -707,4 +708,6 @@ export const useGymStore = create<GymStore>((set, get) => ({
       throw error;
     }
   },
+
+  clearCurrentGym: () => set({ currentGym: null }),
 }));
