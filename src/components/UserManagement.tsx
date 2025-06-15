@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, UserCircle, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, UserCircle, AlertCircle, Search, Grid2x2, LayoutList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserManagementProps {
@@ -19,6 +20,8 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -36,6 +39,11 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
       fetchMembershipPlans(gymId);
     }
   }, [gymId, fetchMembershipPlans]);
+
+  // Filter users based on search term
+  const filteredUsers = users.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const resetForm = () => {
     setFormData({
@@ -297,6 +305,36 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
         </Card>
       )}
 
+      {/* Search and View Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Search members by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+          >
+            <Grid2x2 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <LayoutList className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Add/Edit Form */}
       {showAddForm && (
         <Card>
           <CardHeader>
@@ -446,86 +484,185 @@ const UserManagement = ({ gymId }: UserManagementProps) => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {users.map((user) => (
-          <Card key={user.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <UserCircle className="w-8 h-8 text-blue-600" />
-                  <CardTitle className="text-lg">{user.name}</CardTitle>
+      {/* Members Display */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredUsers.map((user) => (
+            <Card key={user.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <UserCircle className="w-8 h-8 text-blue-600" />
+                    <CardTitle className="text-lg">{user.name}</CardTitle>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(user)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Member</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this member? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(user.id)}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(user)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Member</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this member? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(user.id)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-sm text-gray-600">{user.email}</p>
+                <p className="text-sm text-gray-600">{user.phone}</p>
+                <div className="flex gap-2">
+                  <Badge className={getStatusColor(user.status)}>
+                    {user.status}
+                  </Badge>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-sm text-gray-600">{user.email}</p>
-              <p className="text-sm text-gray-600">{user.phone}</p>
-              <div className="flex gap-2">
-                <Badge className={getStatusColor(user.status)}>
-                  {user.status}
-                </Badge>
-              </div>
-              <div className="bg-green-50 p-2 rounded text-sm">
-                <strong>Plan:</strong> {getPlanName(user.membershipPlanId)}
-                {user.membershipEndDate && (
-                  <div className="text-xs text-gray-600 mt-1">
-                    Expires: {new Date(user.membershipEndDate).toLocaleDateString()}
+                <div className="bg-green-50 p-2 rounded text-sm">
+                  <strong>Plan:</strong> {getPlanName(user.membershipPlanId)}
+                  {user.membershipEndDate && (
+                    <div className="text-xs text-gray-600 mt-1">
+                      Expires: {new Date(user.membershipEndDate).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+                {user.username && (
+                  <div className="bg-blue-50 p-2 rounded text-sm">
+                    <strong>Login Username:</strong> {user.username}
                   </div>
                 )}
-              </div>
-              {user.username && (
-                <div className="bg-blue-50 p-2 rounded text-sm">
-                  <strong>Login Username:</strong> {user.username}
-                </div>
-              )}
-              <p className="text-xs text-gray-500">Joined: {new Date(user.joinDate).toLocaleDateString()}</p>
-              {user.barcode && (
-                <p className="text-xs text-gray-500">Barcode: {user.barcode}</p>
-              )}
-              {!user.barcode && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleGenerateBarcode(user.id)}
-                  className="w-full mt-2"
-                >
-                  Generate Barcode
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <p className="text-xs text-gray-500">Joined: {new Date(user.joinDate).toLocaleDateString()}</p>
+                {user.barcode && (
+                  <p className="text-xs text-gray-500">Barcode: {user.barcode}</p>
+                )}
+                {!user.barcode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleGenerateBarcode(user.id)}
+                    className="w-full mt-2"
+                  >
+                    Generate Barcode
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Plan</TableHead>
+                <TableHead>Join Date</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <UserCircle className="w-5 h-5 text-blue-600" />
+                      {user.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.phone}</TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(user.status)}>
+                      {user.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      {getPlanName(user.membershipPlanId)}
+                      {user.membershipEndDate && (
+                        <div className="text-xs text-gray-500">
+                          Expires: {new Date(user.membersshipEndDate).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(user)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Member</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this member? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(user.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      {!user.barcode && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGenerateBarcode(user.id)}
+                        >
+                          Generate Barcode
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {filteredUsers.length === 0 && users.length > 0 && (
+        <Card>
+          <CardContent className="text-center py-8">
+            <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No members found matching "{searchTerm}".</p>
+          </CardContent>
+        </Card>
+      )}
 
       {users.length === 0 && (
         <Card>
