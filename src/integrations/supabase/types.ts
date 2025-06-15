@@ -317,20 +317,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      authenticate_gym_admin: {
-        Args: { input_username: string; input_password: string }
+      authenticate_user: {
+        Args: { p_username: string; p_password: string }
         Returns: {
+          user_type: string
+          user_id: string
+          user_name: string
           gym_id: string
           gym_name: string
-          is_authenticated: boolean
-        }[]
-      }
-      authenticate_member: {
-        Args: { input_username: string; input_password: string }
-        Returns: {
-          member_id: string
-          member_name: string
-          gym_id: string
           is_authenticated: boolean
         }[]
       }

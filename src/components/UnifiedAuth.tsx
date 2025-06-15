@@ -60,7 +60,7 @@ const UnifiedAuth = ({ onAuthSuccess }: UnifiedAuthProps) => {
 
         if (adminData) {
           toast({ title: "Welcome Super Admin!" });
-          // onAuthStateChange in Index.tsx will handle the state update and redirect.
+          // onAuthStateChange in Index.tsx will handle the state update.
           authenticated = true;
           setLoading(false);
           return;
@@ -82,12 +82,12 @@ const UnifiedAuth = ({ onAuthSuccess }: UnifiedAuthProps) => {
 
             if (error) throw error;
       
-            if (data && data.length > 0) {
+            if (data && Array.isArray(data) && data.length > 0) {
               const result = data[0];
               if(result.is_authenticated) {
                 toast({
                   title: "Success",
-                  description: `Welcome back, ${result.user_name}!`
+                  description: `Welcome back, ${result.user_name || 'user'}!`
                 });
                 onAuthSuccess({
                     userType: result.user_type,
